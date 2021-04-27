@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.Drawing;
 using System.Windows;
 using System.Windows.Input;
-using Comlink.Render.Shader;
 using Nedry;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
@@ -14,6 +13,9 @@ namespace Comlink.Render
 {
 	public class GraphRenderer
 	{
+		private const SKColorType ColorType = SKColorType.Rgba8888;
+		private const GRSurfaceOrigin SurfaceOrigin = GRSurfaceOrigin.BottomLeft;
+
 		private readonly object _bufferSync = new();
 
 		private readonly GLWpfControl _control;
@@ -28,22 +30,19 @@ namespace Comlink.Render
 		};
 
 		private Vector2 _boardOffset = Vector2.Zero;
-
 		private float _boardZoom = 1;
-		private int _height;
+		private SKCanvas _canvas;
+		private GRGlFramebufferInfo _glInfo;
+
+		private GRContext _grContext;
 
 		private Vector2 _lastMousePos = Vector2.Zero;
+
+		private SKSizeI _lastSize;
 		private Vector2 _mouseDownPos = Vector2.Zero;
-
-		private IntPtr _pixelDataPtr;
-		private bool _ready;
-		private bool _resizeRequired = true;
+		private GRBackendRenderTarget _renderTarget;
+		private SKSizeI _size;
 		private SKSurface _surface;
-		private int _width;
-
-		public int ScreenVao { get; set; }
-		public ShaderProgram ShaderScreen { get; set; }
-		public int ScreenTexture { get; set; }
 
 		public GraphRenderer(GLWpfControl control)
 		{
@@ -64,76 +63,9 @@ namespace Comlink.Render
 			);
 		}
 
-		private void Load()
-		{
-			GL.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
-			GL.PixelStore(PixelStoreParameter.PackAlignment, 1);
-
-			// Set background color
-			GL.ClearColor(1, 1, 1, 1);
-
-			ShaderScreen = new ShaderProgram(
-				"#version 330 core\nout vec4 FragColor;\nin vec2 TexCoords;\nuniform sampler2D img;\nvoid main()\n{\nvec4 sample=texture(img,vec2(TexCoords.x,1-TexCoords.y));\nvec3 bg=vec3(1.0, 1.0, 1.0);\nFragColor=vec4(sample.rgb*sample.a+(1.0-sample.a)*bg,1.0);\n}",
-				"#version 330 core\nlayout (location=0) in vec2 aPos;\nlayout (location=1) in vec2 aTexCoords;\nout vec2 TexCoords;\nvoid main()\n{\ngl_Position=vec4(aPos.x,aPos.y,0.0,1.0);\nTexCoords=aTexCoords;\n} "
-			);
-			ShaderScreen.Uniforms.SetValue("img", 0);
-
-			CreateScreenVao();
-
-			ScreenTexture = GL.GenTexture();
-
-			// var pixels = Populate(new byte[Size.X * Size.Y * 4], 0xFF);
-
-			GL.BindTexture(TextureTarget.Texture2D, ScreenTexture);
-			// GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba8, Size.X, Size.Y, 0, PixelFormat.Rgba,
-			// 	PixelType.UnsignedByte, pixels);
-
-			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter,
-				(int) TextureMinFilter.Linear);
-			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter,
-				(int) TextureMagFilter.Linear);
-			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS,
-				(int) TextureWrapMode.ClampToEdge);
-			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT,
-				(int) TextureWrapMode.ClampToEdge);
-			GL.BindTexture(TextureTarget.Texture2D, 0);
-		}
-
-		private void CreateScreenVao()
-		{
-			float[] quadVertices = {-1, 1, 0, 1, -1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1, 1, -1, 1, 0, 1, 1, 1, 1};
-
-			ScreenVao = GL.GenVertexArray();
-			var screenVbo = GL.GenBuffer();
-			GL.BindVertexArray(ScreenVao);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, screenVbo);
-			GL.BufferData(BufferTarget.ArrayBuffer, quadVertices.Length * sizeof(float), quadVertices,
-				BufferUsageHint.StaticDraw);
-			GL.EnableVertexAttribArray(0);
-			GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), 0);
-			GL.BufferData(BufferTarget.ArrayBuffer, quadVertices.Length * sizeof(float), quadVertices,
-				BufferUsageHint.StaticDraw);
-			GL.EnableVertexAttribArray(1);
-			GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), 2 * sizeof(float));
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);
-		}
-
-		private void DrawFullscreenQuad()
-		{
-			GL.BindVertexArray(ScreenVao);
-			GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
-		}
-
-		private static byte[] Populate(byte[] arr, byte value)
-		{
-			for (var i = 0; i < arr.Length; i++) arr[i] = value;
-			return arr;
-		}
-
 		private Vector2 GetRelativeMousePositionOnBoard(MouseEventArgs e)
 		{
-			var halfScreen = new Vector2(_width / 2f, _height / 2f);
+			var halfScreen = new Vector2(_size.Width / 2f, _size.Height / 2f);
 			var pos = e.GetPosition(_control);
 			return (new Vector2((float) pos.X, (float) pos.Y) - halfScreen) / _boardZoom + halfScreen;
 		}
@@ -170,65 +102,77 @@ namespace Comlink.Render
 
 		public void OnSizeChanged(SizeChangedEventArgs e)
 		{
-			_resizeRequired = true;
 		}
 
 		public void OnRender(TimeSpan dt)
 		{
-			if (!_ready)
+			GL.ClearColor(Color.White);
+
+			var width = Math.Max(_control.FrameBufferWidth, 1);
+			var height = Math.Max(_control.FrameBufferHeight, 1);
+
+			// get the new surface size
+			_size = new SKSizeI(width, height);
+
+			// create the contexts if not done already
+			if (_grContext == null)
 			{
-				Load();
-				_ready = true;
+				var glInterface = GRGlInterface.Create();
+				_grContext = GRContext.CreateGl(glInterface);
 			}
 
-			if (_resizeRequired)
+			// manage the drawing surface
+			if (_renderTarget == null || _lastSize != _size || !_renderTarget.IsValid)
 			{
+				// create or update the dimensions
+				_lastSize = _size;
+
+				GL.GetInteger(GetPName.StencilBits, out var stencil);
+				GL.GetInteger(GetPName.Samples, out var samples);
+				var maxSamples = _grContext.GetMaxSurfaceSampleCount(ColorType);
+				if (samples > maxSamples)
+					samples = maxSamples;
+				_glInfo = new GRGlFramebufferInfo((uint) _control.Framebuffer, ColorType.ToGlSizedFormat());
+
+				// destroy the old surface
 				_surface?.Dispose();
+				_surface = null;
+				_canvas = null;
 
-				_width = Math.Max(_control.FrameBufferWidth, 1);
-				_height = Math.Max(_control.FrameBufferHeight, 1);
-
-				if (_pixelDataPtr != IntPtr.Zero)
-					Marshal.FreeHGlobal(_pixelDataPtr);
-
-				_pixelDataPtr = Marshal.AllocHGlobal(_width * _height * 4);
-
-				_surface = SKSurface.Create(new SKImageInfo(_width, _height));
-
-				_resizeRequired = false;
+				// re-create the render target
+				_renderTarget?.Dispose();
+				_renderTarget = new GRBackendRenderTarget(_size.Width, _size.Height, samples, stencil, _glInfo);
 			}
 
-			const ClearBufferMask bits = ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit;
-			// Reset the view
-			GL.Clear(bits);
+			// create the surface
+			if (_surface == null)
+			{
+				_surface = SKSurface.Create(_grContext, _renderTarget, SurfaceOrigin, ColorType);
+				_canvas = _surface.Canvas;
+			}
 
-			_surface.Canvas.Clear();
-			_surface.Canvas.Save();
+			if (_surface == null || _canvas == null)
+				throw new InvalidOperationException();
 
-			_surface.Canvas.Translate(_width / 2f, _height / 2f);
-			_surface.Canvas.Scale(_boardZoom);
-			_surface.Canvas.Translate(-_width / 2f, -_height / 2f);
+			// render the canvas
+			using (new SKAutoCanvasRestore(_canvas, true))
+			{
+				_canvas.Clear();
+				_canvas.Save();
 
-			_surface.Canvas.Translate(_boardOffset.X, _boardOffset.Y);
+				_canvas.Translate(_size.Width / 2f, _size.Height / 2f);
+				_canvas.Scale(_boardZoom);
+				_canvas.Translate(-_size.Width / 2f, -_size.Height / 2f);
 
-			// draw graph
+				_canvas.Translate(_boardOffset.X, _boardOffset.Y);
 
-			_nodeRenderer.DrawNode(_surface.Canvas, 50, 50, _testNode);
+				// draw graph
 
-			_surface.Canvas.Restore();
-			_surface.Canvas.Flush();
+				_nodeRenderer.DrawNode(_canvas, 50, 50, _testNode);
 
-			var image = _surface.Snapshot();
-
-			image.ReadPixels(new SKImageInfo(_width, _height, SKColorType.Rgba8888, SKAlphaType.Unpremul), _pixelDataPtr);
-
-			GL.BindTexture(TextureTarget.Texture2D, ScreenTexture);
-			GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, _width, _height, 0, PixelFormat.Rgba,
-				PixelType.UnsignedByte, _pixelDataPtr);
-
-			ShaderScreen.Use();
-			DrawFullscreenQuad();
-			ShaderScreen.Release();
+				_canvas.Restore();
+				_canvas.Flush();
+			}
 
 			var err = GL.GetError();
 			if (err != ErrorCode.NoError)
