@@ -6,6 +6,7 @@ namespace Nedry
 	{
 		string Name { get; set; }
 		Guid PinId { get; set; }
+		uint Color { get; set; }
 		Connection CreateConnection(IOutputPin output, IInputPin input);
 	}
 }

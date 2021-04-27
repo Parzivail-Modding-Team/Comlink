@@ -6,6 +6,7 @@ using System.Windows.Input;
 using Comlink.Render.Shader;
 using Nedry;
 using OpenTK.Graphics.OpenGL;
+using OpenTK.Mathematics;
 using OpenTK.Wpf;
 using SkiaSharp;
 
@@ -13,16 +14,28 @@ namespace Comlink.Render
 {
 	public class GraphRenderer
 	{
-		private static readonly float Sqrt2 = 1.41421356f;
 		private readonly object _bufferSync = new();
 
 		private readonly GLWpfControl _control;
+		private readonly NodeRenderer _nodeRenderer;
 
-		private readonly IInputPin[] _inputPins = {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")};
-		private readonly IOutputPin[] _outputPins = {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")};
+		private readonly Node _testNode = new()
+		{
+			Name = "Test Node",
+			Color = 0xFF_87cefa,
+			InputPins = new IInputPin[] {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
+			OutputPins = new IOutputPin[] {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")}
+		};
+
+		private Vector2 _boardOffset = Vector2.Zero;
+
+		private float _boardZoom = 1;
 		private int _height;
-		private IntPtr _pixelDataPtr;
 
+		private Vector2 _lastMousePos = Vector2.Zero;
+		private Vector2 _mouseDownPos = Vector2.Zero;
+
+		private IntPtr _pixelDataPtr;
 		private bool _ready;
 		private bool _resizeRequired = true;
 		private SKSurface _surface;
@@ -35,6 +48,20 @@ namespace Comlink.Render
 		public GraphRenderer(GLWpfControl control)
 		{
 			_control = control;
+
+			var baseNodePaint = new SKPaint
+			{
+				IsAntialias = true,
+				TextSize = 16,
+				SubpixelText = true,
+				LcdRenderText = true,
+				IsAutohinted = true
+			};
+			_nodeRenderer = new NodeRenderer(
+				baseNodePaint,
+				SKTypeface.FromFamilyName("IBM Plex Sans", SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
+				SKTypeface.FromFamilyName("IBM Plex Sans", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+			);
 		}
 
 		private void Load()
@@ -104,201 +131,46 @@ namespace Comlink.Render
 			return arr;
 		}
 
+		private Vector2 GetRelativeMousePositionOnBoard(MouseEventArgs e)
+		{
+			var halfScreen = new Vector2(_width / 2f, _height / 2f);
+			var pos = e.GetPosition(_control);
+			return (new Vector2((float) pos.X, (float) pos.Y) - halfScreen) / _boardZoom + halfScreen;
+		}
+
+		private Vector2 GetAbsoluteMousePositionOnBoard(MouseEventArgs e)
+		{
+			return GetRelativeMousePositionOnBoard(e) - _boardOffset;
+		}
+
 		public void OnMouseMove(MouseEventArgs e)
 		{
+			var posOnBoard = GetRelativeMousePositionOnBoard(e);
+
+			if (e.RightButton == MouseButtonState.Pressed) _boardOffset += posOnBoard - _lastMousePos;
+
+			_lastMousePos = posOnBoard;
 		}
 
 		public void OnMouseDown(MouseButtonEventArgs e)
 		{
+			_lastMousePos = GetRelativeMousePositionOnBoard(e);
+			_mouseDownPos = GetAbsoluteMousePositionOnBoard(e);
+
+			// var nodeContains = _nodeRenderer.NodeContains(50, 50, _testNode, _mouseDownPos.X, _mouseDownPos.Y);
 		}
 
 		public void OnMouseWheel(MouseWheelEventArgs e)
 		{
+			if (e.Delta < 0)
+				_boardZoom /= 2;
+			else
+				_boardZoom *= 2;
 		}
 
 		public void OnSizeChanged(SizeChangedEventArgs e)
 		{
 			_resizeRequired = true;
-		}
-
-		private void DrawNode(SKCanvas ctx, int x, int y, string title, IInputPin[] inputPins, IOutputPin[] outputPins)
-		{
-			var headerTextPaint = new SKPaint
-			{
-				Color = new SKColor(0xFF_FFFFFF),
-				IsAntialias = true,
-				IsStroke = false,
-				Typeface = SKTypeface.FromFamilyName("IBM Plex Sans", SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
-				TextSize = 16,
-				SubpixelText = true,
-				LcdRenderText = true,
-				IsAutohinted = true
-			};
-
-			var textPaint = new SKPaint
-			{
-				Color = new SKColor(0xFF_FFFFFF),
-				IsAntialias = true,
-				IsStroke = false,
-				Typeface = SKTypeface.FromFamilyName("IBM Plex Sans", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
-				TextSize = 16,
-				SubpixelText = true,
-				LcdRenderText = true,
-				IsAutohinted = true
-			};
-
-			var headerPaint = new SKPaint
-			{
-				Color = new SKColor(0xFF_9370db),
-				IsAntialias = true,
-				IsStroke = false
-			};
-
-			var boxPaint = new SKPaint
-			{
-				Color = new SKColor(0xFF_2f4f4f),
-				IsAntialias = true,
-				IsStroke = false
-			};
-
-			var inputPaint = new SKPaint
-			{
-				Color = new SKColor(0xFF_00bfff),
-				IsAntialias = true,
-				IsStroke = false
-			};
-
-			var outputPaint = new SKPaint
-			{
-				Color = new SKColor(0xFF_32cd32),
-				IsAntialias = true,
-				IsStroke = false
-			};
-
-			var flowPaint = new SKPaint
-			{
-				Color = new SKColor(0xFF_FFFFFF),
-				IsAntialias = true,
-				IsStroke = false
-			};
-
-			const int radius = 9;
-			const int inset = 3;
-
-			var headerLineHeight = (int) (headerTextPaint.FontMetrics.Descent - headerTextPaint.FontMetrics.Ascent + headerTextPaint.FontMetrics.Leading);
-			var headerBaselineOffset = (int) -headerTextPaint.FontMetrics.Ascent;
-
-			var lineHeight = (int) (textPaint.FontMetrics.Descent - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Leading);
-
-			var width = 200;
-			var numPins = Math.Max(inputPins.Length, outputPins.Length);
-			var height = lineHeight * (numPins - 1) - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Descent + 6;
-
-			ctx.Save();
-			// ctx.Scale(2);
-
-			// header
-			ctx.DrawRoundRect(x - inset, y - headerLineHeight, width + 2 * inset, height + headerLineHeight + inset, radius, radius, headerPaint);
-
-			// title
-			ctx.DrawCircle(x + (headerBaselineOffset - inset + 1) / 2f, y - headerLineHeight / 2f, headerLineHeight / 4f, headerTextPaint);
-			ctx.DrawText(title, x + headerBaselineOffset, y - headerLineHeight + headerBaselineOffset, headerTextPaint);
-
-			// body
-			ctx.DrawRoundRect(x, y, width, height, radius - inset + 1, radius - inset + 1, boxPaint);
-
-			y -= (int) (textPaint.FontMetrics.Ascent - 3);
-
-			for (int i = 0, pY = y; i < inputPins.Length; i++, pY += lineHeight)
-			{
-				var pin = inputPins[i];
-
-				if (pin is FlowInputPin)
-				{
-					var r = lineHeight / 10f;
-					var l = lineHeight / 4f;
-					DrawRoundedTriangle(ctx, x - l / 2, pY - l, l, r + inset, boxPaint);
-					DrawRoundedTriangle(ctx, x - l / 2, pY - l, l, r, flowPaint);
-				}
-				else
-				{
-					// input dot
-					ctx.DrawCircle(x, pY - lineHeight / 4f, lineHeight / 3f, boxPaint);
-					ctx.DrawCircle(x, pY - lineHeight / 4f, lineHeight / 3f - inset, inputPaint);
-				}
-
-				ctx.DrawText(pin.Name, (int) (x + lineHeight / 2f), pY, textPaint);
-			}
-
-			for (int i = 0, pY = y; i < outputPins.Length; i++, pY += lineHeight)
-			{
-				var pin = outputPins[i];
-
-				if (pin is FlowOutputPin)
-				{
-					var r = lineHeight / 10f;
-					var l = lineHeight / 4f;
-					DrawRoundedTriangle(ctx, x + width - l / 2, pY - l, l, r + inset, boxPaint);
-					DrawRoundedTriangle(ctx, x + width - l / 2, pY - l, l, r, flowPaint);
-				}
-				else
-				{
-					// output dot
-					ctx.DrawCircle(x + width, pY - lineHeight / 4f, lineHeight / 3f, boxPaint);
-					ctx.DrawCircle(x + width, pY - lineHeight / 4f, lineHeight / 3f - 3, outputPaint);
-				}
-
-				var textWidth = textPaint.MeasureText(pin.Name);
-				ctx.DrawText(pin.Name, (int) (x + width - textWidth - lineHeight / 2f), pY, textPaint);
-			}
-
-			ctx.Restore();
-		}
-
-		private static void DrawRoundedTriangle(SKCanvas ctx, float x, float y, float l, float r, SKPaint paint)
-		{
-			var path = new SKPath();
-
-			var d = r / Sqrt2;
-
-			path.MoveTo(x - r, y);
-			path.LineTo(x - r, y - l);
-
-			if (r > 0)
-				path.RArcTo(r, r, 135, SKPathArcSize.Small, SKPathDirection.Clockwise, r + d, -d);
-
-			path.LineTo(x + l + d, y - d);
-
-			if (r > 0)
-				path.RArcTo(r, r, 90, SKPathArcSize.Small, SKPathDirection.Clockwise, 0, 2 * d);
-
-			path.LineTo(x + d, y + l + d);
-
-			if (r > 0)
-				path.RArcTo(r, r, 135, SKPathArcSize.Small, SKPathDirection.Clockwise, -r - d, -d);
-
-			path.Close();
-
-			ctx.DrawPath(path, paint);
-		}
-
-		private static void MakeRoundedRect(ref SKPath path, int width, int height, int rTopLeft, int rTopRight, int rBottomRight, int rBottomLeft)
-		{
-			path.Reset();
-
-			path.MoveTo(width - rTopRight, 0);
-			path.RArcTo(rTopRight, rTopRight, 90, SKPathArcSize.Small, SKPathDirection.Clockwise, rTopRight, rTopRight);
-
-			path.LineTo(width, height - rBottomRight);
-			path.RArcTo(rBottomRight, rBottomRight, 90, SKPathArcSize.Small, SKPathDirection.Clockwise, -rBottomRight, rBottomRight);
-
-			path.LineTo(rBottomLeft, height);
-			path.RArcTo(rBottomLeft, rBottomLeft, 90, SKPathArcSize.Small, SKPathDirection.Clockwise, -rBottomLeft, -rBottomLeft);
-
-			path.LineTo(0, rTopLeft);
-			path.RArcTo(rTopLeft, rTopLeft, 90, SKPathArcSize.Small, SKPathDirection.Clockwise, rTopLeft, -rTopLeft);
-
-			path.Close();
 		}
 
 		public void OnRender(TimeSpan dt)
@@ -331,17 +203,21 @@ namespace Comlink.Render
 			GL.Clear(bits);
 
 			_surface.Canvas.Clear();
+			_surface.Canvas.Save();
+
+			_surface.Canvas.Translate(_width / 2f, _height / 2f);
+			_surface.Canvas.Scale(_boardZoom);
+			_surface.Canvas.Translate(-_width / 2f, -_height / 2f);
+
+			_surface.Canvas.Translate(_boardOffset.X, _boardOffset.Y);
 
 			// draw graph
 
-			// private readonly IInputPin[] _inputPins = ;
-			// private readonly IOutputPin[] _outputPins = {new FlowOutputPin(), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")};
-			DrawNode(_surface.Canvas, 50, 50, "Node 1",
-				new IInputPin[] {new FlowInputPin(), new BasicInputPin("Input Val")},
-				new IOutputPin[] {new FlowOutputPin("Route A"), new FlowOutputPin("Route B"), new BasicOutputPin("Bleg")}
-			);
+			_nodeRenderer.DrawNode(_surface.Canvas, 50, 50, _testNode);
 
+			_surface.Canvas.Restore();
 			_surface.Canvas.Flush();
+
 			var image = _surface.Snapshot();
 
 			image.ReadPixels(new SKImageInfo(_width, _height, SKColorType.Rgba8888, SKAlphaType.Unpremul), _pixelDataPtr);
@@ -376,6 +252,9 @@ namespace Comlink.Render
 		public Guid PinId { get; set; }
 
 		/// <inheritdoc />
+		public uint Color { get; set; } = 0xFF_00bfff;
+
+		/// <inheritdoc />
 		public Connection CreateConnection(IOutputPin output, IInputPin input)
 		{
 			throw new NotImplementedException();
@@ -402,6 +281,9 @@ namespace Comlink.Render
 		public Guid PinId { get; set; }
 
 		/// <inheritdoc />
+		public uint Color { get; set; } = 0xFF_32cd32;
+
+		/// <inheritdoc />
 		public Connection CreateConnection(IOutputPin output, IInputPin input)
 		{
 			throw new NotImplementedException();
@@ -419,6 +301,7 @@ namespace Comlink.Render
 		/// <inheritdoc />
 		public FlowInputPin() : base(string.Empty)
 		{
+			Color = 0xFF_FFFFFF;
 		}
 	}
 
@@ -427,6 +310,7 @@ namespace Comlink.Render
 		/// <inheritdoc />
 		public FlowOutputPin(string name) : base(name)
 		{
+			Color = 0xFF_FFFFFF;
 		}
 	}
 }

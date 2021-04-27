@@ -8,7 +8,7 @@ namespace Nedry
 		public IInputPin[] InputPins;
 		public IOutputPin[] OutputPins;
 		public Guid NodeId { get; set; }
-
+		public uint Color { get; set; }
 		public string Name { get; set; }
 	}
 }
