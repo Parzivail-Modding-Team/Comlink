@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Comlink", "Comlink\Comlink.csproj", "{90C35164-E4F8-4A3A-8129-E8E135D1D16B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nedry", "Nedry\Nedry.csproj", "{3C23DE31-216B-4C55-B919-9CF77241BC47}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{90C35164-E4F8-4A3A-8129-E8E135D1D16B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90C35164-E4F8-4A3A-8129-E8E135D1D16B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90C35164-E4F8-4A3A-8129-E8E135D1D16B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90C35164-E4F8-4A3A-8129-E8E135D1D16B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C23DE31-216B-4C55-B919-9CF77241BC47}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C23DE31-216B-4C55-B919-9CF77241BC47}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C23DE31-216B-4C55-B919-9CF77241BC47}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C23DE31-216B-4C55-B919-9CF77241BC47}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
