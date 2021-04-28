@@ -22,8 +22,36 @@ namespace Comlink.Render
 		private readonly GLWpfControl _control;
 		private readonly NodeRenderer _nodeRenderer;
 
+		private readonly List<Node> _nodes = new()
+		{
+			new Node
+			{
+				Name = "Test Node",
+				NodeId = Guid.NewGuid(),
+				Color = 0xFF_87cefa,
+				InputPins = {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
+				OutputPins = {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")},
+				X = 10,
+				Y = 50
+			},
+			new Node
+			{
+				Name = "Test Node 2",
+				NodeId = Guid.NewGuid(),
+				Color = 0xFF_32cd32,
+				InputPins = {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
+				OutputPins = {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")},
+				X = 300,
+				Y = 50
+			}
+		};
+
+		private readonly List<Node> _selectedNodes = new();
+		private readonly List<Node> _selectedNodesQueue = new();
+
 		private SKMatrix _boardTransform = SKMatrix.Identity;
 		private SKCanvas _canvas;
+		private PinIdentifier _dragSourcePin;
 		private GRGlFramebufferInfo _glInfo;
 		private GRContext _grContext;
 		private Vector2 _lastMouseBoardPos = Vector2.Zero;
@@ -31,36 +59,13 @@ namespace Comlink.Render
 		private SKSizeI _lastSize;
 		private Vector2 _mouseDownPos = Vector2.Zero;
 
-		private readonly List<Node> _nodes = new()
-		{
-			new()
-			{
-				Name = "Test Node",
-				Color = 0xFF_87cefa,
-				InputPins = new IInputPin[] {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
-				OutputPins = new IOutputPin[] {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")},
-				X = 10,
-				Y = 50
-			},
-			new()
-			{
-				Name = "Test Node 2",
-				Color = 0xFF_32cd32,
-				InputPins = new IInputPin[] {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
-				OutputPins = new IOutputPin[] {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")},
-				X = 300,
-				Y = 50
-			}
-		};
-
 		private bool _rectangleSelecting;
 		private GRBackendRenderTarget _renderTarget;
 
-		private readonly List<Node> _selectedNodes = new();
-		private readonly List<Node> _selectedNodesQueue = new();
-
 		private SKSizeI _size;
 		private SKSurface _surface;
+
+		private static bool IsDeleteConnectionKeyDown => Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
 
 		public GraphRenderer(GLWpfControl control)
 		{
@@ -153,10 +158,87 @@ namespace Comlink.Render
 					_selectedNodesQueue.Add(node);
 		}
 
+		public bool HasSource(IPin pin)
+		{
+			return _nodes.SelectMany(node => node.Connections).Any(connection => connection.DestPinId == pin.PinId);
+		}
+
+		public bool HasDestination(IPin pin)
+		{
+			return _nodes.SelectMany(node => node.Connections).Any(connection => connection.SourcePinId == pin.PinId);
+		}
+
+		public void RemoveAllConnections(IPin pin)
+		{
+			foreach (var node in _nodes)
+				node.Connections.RemoveAll(connection => connection.SourcePinId == pin.PinId || connection.DestPinId == pin.PinId);
+		}
+
+		private void CreateConnection(PinIdentifier a, PinIdentifier b)
+		{
+			if (!a.Pin.CanConnectTo(b.Pin))
+				return;
+
+			if (b.Pin is IOutputPin && a.Pin is IInputPin)
+			{
+				// b -> a
+
+				if (a.Pin is BasicInputPin && HasSource(a.Pin))
+					return;
+
+				if (b.Pin is FlowOutputPin && HasDestination(b.Pin))
+					return;
+
+				b.Node.Connections.Add(new Connection(b.Node.NodeId, b.Pin.PinId, a.Node.NodeId, a.Pin.PinId));
+			}
+			else if (a.Pin is IOutputPin && b.Pin is IInputPin)
+			{
+				// a -> b
+
+				if (b.Pin is BasicInputPin && HasSource(b.Pin))
+					return;
+
+				if (a.Pin is FlowOutputPin && HasDestination(a.Pin))
+					return;
+
+				a.Node.Connections.Add(new Connection(a.Node.NodeId, a.Pin.PinId, b.Node.NodeId, b.Pin.PinId));
+			}
+			else
+			{
+				throw new InvalidOperationException();
+			}
+		}
+
+		private PinIdentifier GetPin(Guid nodeId, Guid pinId)
+		{
+			var node = _nodes.FirstOrDefault(node1 => node1.NodeId == nodeId);
+			if (node == null)
+				return null;
+
+			var pin = (IPin) node.InputPins.FirstOrDefault(inputPin => inputPin.PinId == pinId) ?? node.OutputPins.FirstOrDefault(outputPin => outputPin.PinId == pinId);
+
+			return pin == null ? null : new PinIdentifier(node, pin);
+		}
+
 		public void OnMouseUp(MouseButtonEventArgs e)
 		{
 			_rectangleSelecting = false;
 			CommitSelectionQueue();
+
+			if (_dragSourcePin != null)
+			{
+				var node = GetHotNode();
+
+				if (node != null)
+				{
+					var pin = _nodeRenderer.GetPin(node, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
+
+					if (pin != null && node.NodeId != _dragSourcePin.Node.NodeId)
+						CreateConnection(_dragSourcePin, new PinIdentifier(node, pin));
+				}
+			}
+
+			_dragSourcePin = null;
 		}
 
 		private void CommitSelectionQueue()
@@ -169,22 +251,40 @@ namespace Comlink.Render
 		{
 			_mouseDownPos = _lastMouseBoardPos = GetMousePositionOnBoard(e);
 			var node = GetHotNode();
+			IPin pin = null;
+
+			if (node != null)
+			{
+				pin = _nodeRenderer.GetPin(node, _mouseDownPos.X, _mouseDownPos.Y);
+
+				if (pin != null)
+				{
+					if (IsDeleteConnectionKeyDown)
+						RemoveAllConnections(pin);
+					else
+						_dragSourcePin = new PinIdentifier(node, pin);
+				}
+			}
 
 			if (e.ChangedButton == MouseButton.Left)
 			{
-				if (node == null)
+				if (node == null) // Selected empty space
 				{
 					if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
 						_selectedNodes.Clear();
 
 					_rectangleSelecting = true;
 				}
-				else
+				else if (pin == null) // Selected a node but not a pin
 				{
 					if (_selectedNodes.Count == 1 && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
 						_selectedNodes.Clear();
 
 					SelectNode(node);
+				}
+				else // Selected a pin
+				{
+					_selectedNodes.Clear();
 				}
 			}
 		}
@@ -265,20 +365,80 @@ namespace Comlink.Render
 				IsAntialias = true
 			};
 
+			var connectionPaint = new SKPaint
+			{
+				Color = new SKColor(0x47_808080),
+				StrokeWidth = 5,
+				IsAntialias = true,
+				StrokeCap = SKStrokeCap.Round
+			};
+
+			var deleteConnectionPaint = new SKPaint
+			{
+				Color = new SKColor(0x80_FF0000),
+				StrokeWidth = 5,
+				IsAntialias = true,
+				StrokeCap = SKStrokeCap.Round
+			};
+
 			// render the canvas
 			using (new SKAutoCanvasRestore(_canvas, true))
 			{
 				const int localGridPitch = 50;
 				var originOffset = _boardTransform.MapPoint(0, 0);
-				var gridPitch = Math.Max((int) (localGridPitch * _boardTransform.MapRadius(1)), 1);
+				var gridPitch = (int) (localGridPitch * _boardTransform.MapRadius(1));
 
-				DrawViewportGrid(gridPitch, originOffset, gridPaint);
+				if (gridPitch > 1)
+					DrawViewportGrid(gridPitch, originOffset, gridPaint);
+
 				_canvas.DrawCircle(originOffset, 3, gridPaint);
 
 				_canvas.SetMatrix(_boardTransform);
 
 				if (_rectangleSelecting)
 					_canvas.DrawRect(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X - _mouseDownPos.X, _lastMouseBoardPos.Y - _mouseDownPos.Y, selectionBoxPaint);
+
+				if (_dragSourcePin != null)
+				{
+					var posNullable = _nodeRenderer.GetPinPos(_dragSourcePin.Node, _dragSourcePin.Pin);
+					if (!posNullable.HasValue)
+						throw new InvalidOperationException();
+					var (x, y) = posNullable.Value;
+
+					_canvas.DrawLine(x, y, _lastMouseBoardPos.X, _lastMouseBoardPos.Y, connectionPaint);
+				}
+
+				var hotNode = GetHotNode();
+				IPin hotPin = null;
+
+				if (hotNode != null)
+					hotPin = _nodeRenderer.GetPin(hotNode, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
+
+				foreach (var node in _nodes)
+				{
+					foreach (var connection in node.Connections)
+					{
+						var outputPin = GetPin(connection.SourceNodeId, connection.SourcePinId);
+						var inputPin = GetPin(connection.DestNodeId, connection.DestPinId);
+
+						if (outputPin == null || inputPin == null)
+							throw new InvalidOperationException();
+
+						var outputPos = _nodeRenderer.GetPinPos(outputPin.Node, outputPin.Pin);
+						var inputPos = _nodeRenderer.GetPinPos(inputPin.Node, inputPin.Pin);
+
+						if (outputPos == null || inputPos == null)
+							throw new InvalidOperationException();
+
+						var (oX, oY) = outputPos.Value;
+						var (iX, iY) = inputPos.Value;
+
+						if (hotPin != null && (inputPin.Pin.PinId == hotPin.PinId || outputPin.Pin.PinId == hotPin.PinId) && IsDeleteConnectionKeyDown)
+							_canvas.DrawLine(oX, oY, iX, iY, deleteConnectionPaint);
+						else
+							_canvas.DrawLine(oX, oY, iX, iY, connectionPaint);
+					}
+				}
 
 				foreach (var node in _nodes) _nodeRenderer.DrawNode(_canvas, node, IsSelected(node));
 			}
@@ -305,82 +465,6 @@ namespace Comlink.Render
 				var lY = y + boardOffset.Y % gridPitch;
 				_canvas.DrawLine(0, lY, _size.Width, lY, gridPaint);
 			}
-		}
-	}
-
-	internal class BasicInputPin : IInputPin
-	{
-		public BasicInputPin(string name)
-		{
-			Name = name;
-		}
-
-		/// <inheritdoc />
-		public string Name { get; set; }
-
-		/// <inheritdoc />
-		public Guid PinId { get; set; }
-
-		/// <inheritdoc />
-		public uint Color { get; set; } = 0xFF_00bfff;
-
-		/// <inheritdoc />
-		public Connection CreateConnection(IOutputPin output, IInputPin input)
-		{
-			throw new NotImplementedException();
-		}
-
-		/// <inheritdoc />
-		public bool CanConnectTo(IOutputPin other)
-		{
-			throw new NotImplementedException();
-		}
-	}
-
-	internal class BasicOutputPin : IOutputPin
-	{
-		public BasicOutputPin(string name)
-		{
-			Name = name;
-		}
-
-		/// <inheritdoc />
-		public string Name { get; set; }
-
-		/// <inheritdoc />
-		public Guid PinId { get; set; }
-
-		/// <inheritdoc />
-		public uint Color { get; set; } = 0xFF_32cd32;
-
-		/// <inheritdoc />
-		public Connection CreateConnection(IOutputPin output, IInputPin input)
-		{
-			throw new NotImplementedException();
-		}
-
-		/// <inheritdoc />
-		public bool CanConnectTo(IInputPin other)
-		{
-			throw new NotImplementedException();
-		}
-	}
-
-	internal class FlowInputPin : BasicInputPin
-	{
-		/// <inheritdoc />
-		public FlowInputPin() : base(string.Empty)
-		{
-			Color = 0xFF_FFFFFF;
-		}
-	}
-
-	internal class FlowOutputPin : BasicOutputPin
-	{
-		/// <inheritdoc />
-		public FlowOutputPin(string name) : base(name)
-		{
-			Color = 0xFF_FFFFFF;
 		}
 	}
 }

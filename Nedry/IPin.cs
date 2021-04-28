@@ -4,9 +4,9 @@ namespace Nedry
 {
 	public interface IPin
 	{
+		Guid PinId { get; init; }
 		string Name { get; set; }
-		Guid PinId { get; set; }
 		uint Color { get; set; }
-		Connection CreateConnection(IOutputPin output, IInputPin input);
+		bool CanConnectTo(IPin other);
 	}
 }

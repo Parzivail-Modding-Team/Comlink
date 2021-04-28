@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Nedry
 {
 	public class Node
 	{
-		public Connection[] Connections;
-		public IInputPin[] InputPins;
-		public IOutputPin[] OutputPins;
+		public readonly List<Connection> Connections = new();
+		public readonly List<IInputPin> InputPins = new();
+		public readonly List<IOutputPin> OutputPins = new();
 
 		public float X { get; set; }
 		public float Y { get; set; }

@@ -45,7 +45,7 @@ namespace Comlink.Render
 			var lineHeight = (int) (textPaint.FontMetrics.Descent - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Leading);
 
 			var width = GetNodeWidth(node, headerTextPaint, textPaint);
-			var numPins = Math.Max(node.InputPins.Length, node.OutputPins.Length);
+			var numPins = Math.Max(node.InputPins.Count, node.OutputPins.Count);
 			var height = lineHeight * (numPins - 1) - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Descent + 6;
 
 			return new Box2(x - NodeBorderSize, y - headerLineHeight, x + width + NodeBorderSize, y + height + NodeBorderSize);
@@ -65,11 +65,12 @@ namespace Comlink.Render
 
 			y -= (int) (textPaint.FontMetrics.Ascent - 3);
 
-			var circleRadius = lineHeight / 3f;
+			// Hit-test circle radius larger than render radius
+			var circleRadius = lineHeight / 2f;
 			var pinOffset = lineHeight / 4f;
 
 			var pY = y;
-			for (var i = 0; i < node.InputPins.Length; i++, pY += lineHeight)
+			for (var i = 0; i < node.InputPins.Count; i++, pY += lineHeight)
 			{
 				var pin = node.InputPins[i];
 
@@ -78,12 +79,51 @@ namespace Comlink.Render
 			}
 
 			pY = y;
-			for (var i = 0; i < node.OutputPins.Length; i++, pY += lineHeight)
+			for (var i = 0; i < node.OutputPins.Count; i++, pY += lineHeight)
 			{
 				var pin = node.OutputPins[i];
 
 				if (BoundsHelper.CircleContainsInclusive(x + width, pY - pinOffset, circleRadius, testX, testY))
 					return pin;
+			}
+
+			return null;
+		}
+
+		public Vector2? GetPinPos(Node node, IPin queryPin)
+		{
+			var x = node.X;
+			var y = node.Y;
+
+			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
+			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
+
+			var lineHeight = (int) (textPaint.FontMetrics.Descent - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Leading);
+
+			var width = GetNodeWidth(node, headerTextPaint, textPaint);
+
+			y -= (int) (textPaint.FontMetrics.Ascent - 3);
+
+			var pinOffset = lineHeight / 4f;
+
+			switch (queryPin)
+			{
+				case IInputPin inputQueryPin:
+				{
+					var index = node.InputPins.IndexOf(inputQueryPin);
+					if (index == -1)
+						return null;
+
+					return new Vector2(x, y - pinOffset + lineHeight * index);
+				}
+				case IOutputPin outputQueryPin:
+				{
+					var index = node.OutputPins.IndexOf(outputQueryPin);
+					if (index == -1)
+						return null;
+
+					return new Vector2(x + width, y - pinOffset + lineHeight * index);
+				}
 			}
 
 			return null;
@@ -100,7 +140,7 @@ namespace Comlink.Render
 			var lineHeight = (int) (textPaint.FontMetrics.Descent - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Leading);
 
 			var width = GetNodeWidth(node, headerTextPaint, textPaint);
-			var numPins = Math.Max(node.InputPins.Length, node.OutputPins.Length);
+			var numPins = Math.Max(node.InputPins.Count, node.OutputPins.Count);
 			var height = lineHeight * (numPins - 1) - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Descent + 6;
 
 			var x = node.X;
@@ -142,7 +182,7 @@ namespace Comlink.Render
 			var pinOffset = lineHeight / 4f;
 
 			var pY = y;
-			for (var i = 0; i < node.InputPins.Length; i++, pY += lineHeight)
+			for (var i = 0; i < node.InputPins.Count; i++, pY += lineHeight)
 			{
 				var pin = node.InputPins[i];
 
@@ -162,7 +202,7 @@ namespace Comlink.Render
 			}
 
 			pY = y;
-			for (var i = 0; i < node.OutputPins.Length; i++, pY += lineHeight)
+			for (var i = 0; i < node.OutputPins.Count; i++, pY += lineHeight)
 			{
 				var pin = node.OutputPins[i];
 
