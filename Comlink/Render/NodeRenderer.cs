@@ -1,6 +1,7 @@
 ﻿using System;
 using Comlink.Extensions;
 using Nedry;
+using OpenTK.Mathematics;
 using SkiaSharp;
 
 namespace Comlink.Render
@@ -11,10 +12,13 @@ namespace Comlink.Render
 		private readonly SKTypeface _nodeTypeface;
 		private readonly SKPaint _paint;
 
+		public float[] SelectionStrokeInterval = {5, 5};
+
 		public float NodeCornerRadius { get; set; } = 9;
 		public float NodeBorderSize { get; set; } = 3;
 
 		public uint BodyColor { get; set; } = 0xFF_2f4f4f;
+		public uint SelectionBorderColor { get; set; } = 0xFF_000000;
 
 		public NodeRenderer(SKPaint basePaint, SKTypeface headerTypeface, SKTypeface nodeTypeface)
 		{
@@ -28,8 +32,11 @@ namespace Comlink.Render
 			return 200;
 		}
 
-		public bool NodeContains(int x, int y, Node node, float testX, float testY)
+		public Box2 GetBounds(Node node)
 		{
+			var x = node.X;
+			var y = node.Y;
+
 			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
 			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
 
@@ -41,11 +48,14 @@ namespace Comlink.Render
 			var numPins = Math.Max(node.InputPins.Length, node.OutputPins.Length);
 			var height = lineHeight * (numPins - 1) - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Descent + 6;
 
-			return BoundsHelper.RectContainsInclusive(x - NodeBorderSize, y - headerLineHeight, width + 2 * NodeBorderSize, height + headerLineHeight + NodeBorderSize, testX, testY);
+			return new Box2(x - NodeBorderSize, y - headerLineHeight, x + width + NodeBorderSize, y + height + NodeBorderSize);
 		}
 
-		public IPin GetPin(int x, int y, Node node, float testX, float testY)
+		public IPin GetPin(Node node, float testX, float testY)
 		{
+			var x = node.X;
+			var y = node.Y;
+
 			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
 			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
 
@@ -58,7 +68,8 @@ namespace Comlink.Render
 			var circleRadius = lineHeight / 3f;
 			var pinOffset = lineHeight / 4f;
 
-			for (int i = 0, pY = y; i < node.InputPins.Length; i++, pY += lineHeight)
+			var pY = y;
+			for (var i = 0; i < node.InputPins.Length; i++, pY += lineHeight)
 			{
 				var pin = node.InputPins[i];
 
@@ -66,7 +77,8 @@ namespace Comlink.Render
 					return pin;
 			}
 
-			for (int i = 0, pY = y; i < node.OutputPins.Length; i++, pY += lineHeight)
+			pY = y;
+			for (var i = 0; i < node.OutputPins.Length; i++, pY += lineHeight)
 			{
 				var pin = node.OutputPins[i];
 
@@ -77,7 +89,7 @@ namespace Comlink.Render
 			return null;
 		}
 
-		public void DrawNode(SKCanvas ctx, int x, int y, Node node)
+		public void DrawNode(SKCanvas ctx, Node node, bool selected)
 		{
 			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
 			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
@@ -91,9 +103,30 @@ namespace Comlink.Render
 			var numPins = Math.Max(node.InputPins.Length, node.OutputPins.Length);
 			var height = lineHeight * (numPins - 1) - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Descent + 6;
 
+			var x = node.X;
+			var y = node.Y;
+
+			var headerX = x - NodeBorderSize;
+			var headerY = y - headerLineHeight;
+			var headerWidth = width + 2 * NodeBorderSize;
+			var headerHeight = height + headerLineHeight + NodeBorderSize;
+
+			if (selected)
+			{
+				var selectionStrokeSize = NodeBorderSize / 2f;
+
+				var paint = _paint.Clone();
+				paint.IsStroke = true;
+				paint.Color = new SKColor(SelectionBorderColor);
+				paint.StrokeWidth = selectionStrokeSize;
+				paint.PathEffect = SKPathEffect.CreateDash(SelectionStrokeInterval, (float) ((DateTime.Now - DateTime.Today).TotalSeconds * 10 % 20));
+
+				ctx.DrawRoundRect(headerX - selectionStrokeSize, headerY - selectionStrokeSize, headerWidth + 2 * selectionStrokeSize, headerHeight + 2 * selectionStrokeSize,
+					NodeCornerRadius + selectionStrokeSize, NodeCornerRadius + selectionStrokeSize, paint);
+			}
+
 			// header
-			ctx.DrawRoundRect(x - NodeBorderSize, y - headerLineHeight, width + 2 * NodeBorderSize, height + headerLineHeight + NodeBorderSize, NodeCornerRadius, NodeCornerRadius,
-				_paint.WithColor(node.Color));
+			ctx.DrawRoundRect(headerX, headerY, headerWidth, headerHeight, NodeCornerRadius, NodeCornerRadius, _paint.WithColor(node.Color));
 
 			// title
 			ctx.DrawCircle(x + (headerBaselineOffset - NodeBorderSize + 1) / 2f, y - headerLineHeight / 2f, headerLineHeight / 4f, headerTextPaint);
@@ -108,7 +141,8 @@ namespace Comlink.Render
 			var circleRadius = lineHeight / 3f;
 			var pinOffset = lineHeight / 4f;
 
-			for (int i = 0, pY = y; i < node.InputPins.Length; i++, pY += lineHeight)
+			var pY = y;
+			for (var i = 0; i < node.InputPins.Length; i++, pY += lineHeight)
 			{
 				var pin = node.InputPins[i];
 
@@ -124,10 +158,11 @@ namespace Comlink.Render
 					ctx.DrawCircle(x, pY - pinOffset, circleRadius - NodeBorderSize, _paint.WithColor(pin.Color));
 				}
 
-				ctx.DrawText(pin.Name, (int) (x + lineHeight / 2f), pY, textPaint);
+				ctx.DrawText(pin.Name, x + lineHeight / 2f, pY, textPaint);
 			}
 
-			for (int i = 0, pY = y; i < node.OutputPins.Length; i++, pY += lineHeight)
+			pY = y;
+			for (var i = 0; i < node.OutputPins.Length; i++, pY += lineHeight)
 			{
 				var pin = node.OutputPins[i];
 
@@ -144,7 +179,7 @@ namespace Comlink.Render
 				}
 
 				var textWidth = textPaint.MeasureText(pin.Name);
-				ctx.DrawText(pin.Name, (int) (x + width - textWidth - lineHeight / 2f), pY, textPaint);
+				ctx.DrawText(pin.Name, x + width - textWidth - lineHeight / 2f, pY, textPaint);
 			}
 		}
 	}

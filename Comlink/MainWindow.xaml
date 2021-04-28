@@ -16,6 +16,7 @@
             x:Name="Viewport"
             MouseMove="Viewport_OnMouseMove"
             MouseDown="Viewport_OnMouseDown"
+            MouseUp="Viewport_OnMouseUp"
             MouseWheel="Viewport_OnMouseWheel"
             SizeChanged="Viewport_OnSizeChanged"
             Render="Viewport_OnRender" />

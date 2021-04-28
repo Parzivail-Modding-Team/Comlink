@@ -38,6 +38,11 @@ namespace Comlink
 			_graphRenderer.OnMouseDown(e);
 		}
 
+		private void Viewport_OnMouseUp(object sender, MouseButtonEventArgs e)
+		{
+			_graphRenderer.OnMouseUp(e);
+		}
+
 		private void Viewport_OnMouseWheel(object sender, MouseWheelEventArgs e)
 		{
 			_graphRenderer.OnMouseWheel(e);

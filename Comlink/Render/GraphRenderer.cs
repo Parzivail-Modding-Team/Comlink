@@ -1,6 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using Nedry;
@@ -21,26 +22,43 @@ namespace Comlink.Render
 		private readonly GLWpfControl _control;
 		private readonly NodeRenderer _nodeRenderer;
 
-		private readonly Node _testNode = new()
-		{
-			Name = "Test Node",
-			Color = 0xFF_87cefa,
-			InputPins = new IInputPin[] {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
-			OutputPins = new IOutputPin[] {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")}
-		};
-
-		private Vector2 _boardOffset = Vector2.Zero;
-		private float _boardZoom = 1;
+		private SKMatrix _boardTransform = SKMatrix.Identity;
 		private SKCanvas _canvas;
 		private GRGlFramebufferInfo _glInfo;
-
 		private GRContext _grContext;
-
-		private Vector2 _lastMousePos = Vector2.Zero;
-
+		private Vector2 _lastMouseBoardPos = Vector2.Zero;
+		private Vector2 _lastMouseControlPos = Vector2.Zero;
 		private SKSizeI _lastSize;
 		private Vector2 _mouseDownPos = Vector2.Zero;
+
+		private readonly List<Node> _nodes = new()
+		{
+			new()
+			{
+				Name = "Test Node",
+				Color = 0xFF_87cefa,
+				InputPins = new IInputPin[] {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
+				OutputPins = new IOutputPin[] {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")},
+				X = 10,
+				Y = 50
+			},
+			new()
+			{
+				Name = "Test Node 2",
+				Color = 0xFF_32cd32,
+				InputPins = new IInputPin[] {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
+				OutputPins = new IOutputPin[] {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")},
+				X = 300,
+				Y = 50
+			}
+		};
+
+		private bool _rectangleSelecting;
 		private GRBackendRenderTarget _renderTarget;
+
+		private readonly List<Node> _selectedNodes = new();
+		private readonly List<Node> _selectedNodesQueue = new();
+
 		private SKSizeI _size;
 		private SKSurface _surface;
 
@@ -63,41 +81,120 @@ namespace Comlink.Render
 			);
 		}
 
-		private Vector2 GetRelativeMousePositionOnBoard(MouseEventArgs e)
+		private Vector2 GetMousePositionOnBoard(MouseEventArgs e)
 		{
-			var halfScreen = new Vector2(_size.Width / 2f, _size.Height / 2f);
 			var pos = e.GetPosition(_control);
-			return (new Vector2((float) pos.X, (float) pos.Y) - halfScreen) / _boardZoom + halfScreen;
-		}
-
-		private Vector2 GetAbsoluteMousePositionOnBoard(MouseEventArgs e)
-		{
-			return GetRelativeMousePositionOnBoard(e) - _boardOffset;
+			var transformedPoint = _boardTransform.Invert().MapPoint((float) pos.X, (float) pos.Y);
+			return new Vector2(transformedPoint.X, transformedPoint.Y);
 		}
 
 		public void OnMouseMove(MouseEventArgs e)
 		{
-			var posOnBoard = GetRelativeMousePositionOnBoard(e);
+			var controlPos = e.GetPosition(_control);
+			var posOnControl = new Vector2((float) controlPos.X, (float) controlPos.Y);
 
-			if (e.RightButton == MouseButtonState.Pressed) _boardOffset += posOnBoard - _lastMousePos;
+			var delta = posOnControl - _lastMouseControlPos;
+			var (dX, dY) = delta / _boardTransform.MapRadius(1);
 
-			_lastMousePos = posOnBoard;
+			_lastMouseControlPos = posOnControl;
+
+			var posOnBoard = GetMousePositionOnBoard(e);
+			var node = GetHotNode();
+
+			_lastMouseBoardPos = posOnBoard;
+
+			if (_rectangleSelecting)
+			{
+				SelectAllInSelectionRectangle();
+			}
+			else
+			{
+				if (e.LeftButton == MouseButtonState.Pressed)
+				{
+					if (node != null)
+						foreach (var selectedNode in _selectedNodes)
+						{
+							selectedNode.X += dX;
+							selectedNode.Y += dY;
+						}
+				}
+				else if (e.RightButton == MouseButtonState.Pressed)
+				{
+					_boardTransform = _boardTransform.PostConcat(SKMatrix.CreateTranslation(delta.X, delta.Y));
+				}
+			}
+		}
+
+		private Node GetHotNode()
+		{
+			return _nodes.FirstOrDefault(node => _nodeRenderer.GetBounds(node).Contains(new Vector2(_lastMouseBoardPos.X, _lastMouseBoardPos.Y)));
+		}
+
+		private bool IsSelected(Node node)
+		{
+			return _selectedNodes.Contains(node) || _selectedNodesQueue.Contains(node);
+		}
+
+		private void SelectNode(Node node)
+		{
+			if (IsSelected(node))
+				return;
+
+			_selectedNodes.Add(node);
+		}
+
+		private void SelectAllInSelectionRectangle()
+		{
+			var selectionRect = new Box2(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
+
+			_selectedNodesQueue.Clear();
+			foreach (var node in _nodes.Where(node => !_selectedNodes.Contains(node)))
+				if (_nodeRenderer.GetBounds(node).Contains(selectionRect))
+					_selectedNodesQueue.Add(node);
+		}
+
+		public void OnMouseUp(MouseButtonEventArgs e)
+		{
+			_rectangleSelecting = false;
+			CommitSelectionQueue();
+		}
+
+		private void CommitSelectionQueue()
+		{
+			_selectedNodes.AddRange(_selectedNodesQueue);
+			_selectedNodesQueue.Clear();
 		}
 
 		public void OnMouseDown(MouseButtonEventArgs e)
 		{
-			_lastMousePos = GetRelativeMousePositionOnBoard(e);
-			_mouseDownPos = GetAbsoluteMousePositionOnBoard(e);
+			_mouseDownPos = _lastMouseBoardPos = GetMousePositionOnBoard(e);
+			var node = GetHotNode();
 
-			// var nodeContains = _nodeRenderer.NodeContains(50, 50, _testNode, _mouseDownPos.X, _mouseDownPos.Y);
+			if (e.ChangedButton == MouseButton.Left)
+			{
+				if (node == null)
+				{
+					if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
+						_selectedNodes.Clear();
+
+					_rectangleSelecting = true;
+				}
+				else
+				{
+					if (_selectedNodes.Count == 1 && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
+						_selectedNodes.Clear();
+
+					SelectNode(node);
+				}
+			}
 		}
 
 		public void OnMouseWheel(MouseWheelEventArgs e)
 		{
-			if (e.Delta < 0)
-				_boardZoom /= 2;
-			else
-				_boardZoom *= 2;
+			var factor = e.Delta > 0 ? 2 : 0.5f;
+
+			var (x, y) = GetMousePositionOnBoard(e);
+			_boardTransform = _boardTransform.PreConcat(SKMatrix.CreateScale(factor, factor, x, y));
 		}
 
 		public void OnSizeChanged(SizeChangedEventArgs e)
@@ -106,8 +203,6 @@ namespace Comlink.Render
 
 		public void OnRender(TimeSpan dt)
 		{
-			GL.ClearColor(Color.White);
-
 			var width = Math.Max(_control.FrameBufferWidth, 1);
 			var height = Math.Max(_control.FrameBufferHeight, 1);
 
@@ -154,31 +249,62 @@ namespace Comlink.Render
 			if (_surface == null || _canvas == null)
 				throw new InvalidOperationException();
 
+			_canvas.Clear(SKColors.White);
+
+			var gridPaint = new SKPaint
+			{
+				Color = new SKColor(0xFF_EFEFEF),
+				StrokeWidth = 1,
+				IsAntialias = true
+			};
+
+			var selectionBoxPaint = new SKPaint
+			{
+				Color = new SKColor(0x47_037AFF),
+				StrokeWidth = 1,
+				IsAntialias = true
+			};
+
 			// render the canvas
 			using (new SKAutoCanvasRestore(_canvas, true))
 			{
-				_canvas.Clear();
-				_canvas.Save();
+				const int localGridPitch = 50;
+				var originOffset = _boardTransform.MapPoint(0, 0);
+				var gridPitch = Math.Max((int) (localGridPitch * _boardTransform.MapRadius(1)), 1);
 
-				_canvas.Translate(_size.Width / 2f, _size.Height / 2f);
-				_canvas.Scale(_boardZoom);
-				_canvas.Translate(-_size.Width / 2f, -_size.Height / 2f);
+				DrawViewportGrid(gridPitch, originOffset, gridPaint);
+				_canvas.DrawCircle(originOffset, 3, gridPaint);
 
-				_canvas.Translate(_boardOffset.X, _boardOffset.Y);
+				_canvas.SetMatrix(_boardTransform);
 
-				// draw graph
+				if (_rectangleSelecting)
+					_canvas.DrawRect(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X - _mouseDownPos.X, _lastMouseBoardPos.Y - _mouseDownPos.Y, selectionBoxPaint);
 
-				_nodeRenderer.DrawNode(_canvas, 50, 50, _testNode);
-
-				_canvas.Restore();
-				_canvas.Flush();
+				foreach (var node in _nodes) _nodeRenderer.DrawNode(_canvas, node, IsSelected(node));
 			}
+
+			_canvas.Flush();
 
 			var err = GL.GetError();
 			if (err != ErrorCode.NoError)
 				Debug.WriteLine(err);
 
 			GL.Finish();
+		}
+
+		private void DrawViewportGrid(int gridPitch, SKPoint boardOffset, SKPaint gridPaint)
+		{
+			for (var x = 0; x < _size.Width; x += gridPitch)
+			{
+				var lX = x + boardOffset.X % gridPitch;
+				_canvas.DrawLine(lX, 0, lX, _size.Height, gridPaint);
+			}
+
+			for (var y = 0; y < _size.Height; y += gridPitch)
+			{
+				var lY = y + boardOffset.Y % gridPitch;
+				_canvas.DrawLine(0, lY, _size.Width, lY, gridPaint);
+			}
 		}
 	}
 
