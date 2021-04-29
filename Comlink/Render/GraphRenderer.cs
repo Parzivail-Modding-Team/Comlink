@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using Comlink.Model;
+using Comlink.Model.Nodes;
 using Nedry;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
@@ -24,25 +26,20 @@ namespace Comlink.Render
 
 		private readonly List<Node> _nodes = new()
 		{
-			new Node
+			new InteractNode
 			{
-				Name = "Test Node",
-				NodeId = Guid.NewGuid(),
-				Color = 0xFF_87cefa,
-				InputPins = {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
-				OutputPins = {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")},
-				X = 10,
-				Y = 50
+				X = 70,
+				Y = 70
 			},
-			new Node
+			new BranchNode
 			{
-				Name = "Test Node 2",
-				NodeId = Guid.NewGuid(),
-				Color = 0xFF_32cd32,
-				InputPins = {new FlowInputPin(), new BasicInputPin("In 1"), new BasicInputPin("In 2"), new BasicInputPin("In 3")},
-				OutputPins = {new FlowOutputPin(""), new BasicOutputPin("Out 1"), new BasicOutputPin("Out 2")},
 				X = 300,
-				Y = 50
+				Y = 150
+			},
+			new ExitNode
+			{
+				X = 400,
+				Y = 250
 			}
 		};
 
@@ -183,7 +180,7 @@ namespace Comlink.Render
 			{
 				// b -> a
 
-				if (a.Pin is BasicInputPin && HasSource(a.Pin))
+				if (a.Pin is TypeInputPin && HasSource(a.Pin))
 					return;
 
 				if (b.Pin is FlowOutputPin && HasDestination(b.Pin))
@@ -195,7 +192,7 @@ namespace Comlink.Render
 			{
 				// a -> b
 
-				if (b.Pin is BasicInputPin && HasSource(b.Pin))
+				if (b.Pin is TypeInputPin && HasSource(b.Pin))
 					return;
 
 				if (a.Pin is FlowOutputPin && HasDestination(a.Pin))
@@ -250,24 +247,25 @@ namespace Comlink.Render
 		public void OnMouseDown(MouseButtonEventArgs e)
 		{
 			_mouseDownPos = _lastMouseBoardPos = GetMousePositionOnBoard(e);
-			var node = GetHotNode();
-			IPin pin = null;
-
-			if (node != null)
-			{
-				pin = _nodeRenderer.GetPin(node, _mouseDownPos.X, _mouseDownPos.Y);
-
-				if (pin != null)
-				{
-					if (IsDeleteConnectionKeyDown)
-						RemoveAllConnections(pin);
-					else
-						_dragSourcePin = new PinIdentifier(node, pin);
-				}
-			}
 
 			if (e.ChangedButton == MouseButton.Left)
 			{
+				var node = GetHotNode();
+				IPin pin = null;
+
+				if (node != null)
+				{
+					pin = _nodeRenderer.GetPin(node, _mouseDownPos.X, _mouseDownPos.Y);
+
+					if (pin != null)
+					{
+						if (IsDeleteConnectionKeyDown)
+							RemoveAllConnections(pin);
+						else
+							_dragSourcePin = new PinIdentifier(node, pin);
+					}
+				}
+
 				if (node == null) // Selected empty space
 				{
 					if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
@@ -354,6 +352,7 @@ namespace Comlink.Render
 			var gridPaint = new SKPaint
 			{
 				Color = new SKColor(0xFF_EFEFEF),
+				Style = SKPaintStyle.Stroke,
 				StrokeWidth = 1,
 				IsAntialias = true
 			};
@@ -361,13 +360,24 @@ namespace Comlink.Render
 			var selectionBoxPaint = new SKPaint
 			{
 				Color = new SKColor(0x47_037AFF),
+				Style = SKPaintStyle.Fill,
 				StrokeWidth = 1,
 				IsAntialias = true
 			};
 
-			var connectionPaint = new SKPaint
+			var ephemeralConnectionPaint = new SKPaint
 			{
 				Color = new SKColor(0x47_808080),
+				Style = SKPaintStyle.Stroke,
+				StrokeWidth = 5,
+				IsAntialias = true,
+				StrokeCap = SKStrokeCap.Round
+			};
+
+			var connectionPaint = new SKPaint
+			{
+				Color = new SKColor(0x80_808080),
+				Style = SKPaintStyle.Stroke,
 				StrokeWidth = 5,
 				IsAntialias = true,
 				StrokeCap = SKStrokeCap.Round
@@ -376,6 +386,7 @@ namespace Comlink.Render
 			var deleteConnectionPaint = new SKPaint
 			{
 				Color = new SKColor(0x80_FF0000),
+				Style = SKPaintStyle.Stroke,
 				StrokeWidth = 5,
 				IsAntialias = true,
 				StrokeCap = SKStrokeCap.Round
@@ -398,49 +409,14 @@ namespace Comlink.Render
 				if (_rectangleSelecting)
 					_canvas.DrawRect(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X - _mouseDownPos.X, _lastMouseBoardPos.Y - _mouseDownPos.Y, selectionBoxPaint);
 
-				if (_dragSourcePin != null)
-				{
-					var posNullable = _nodeRenderer.GetPinPos(_dragSourcePin.Node, _dragSourcePin.Pin);
-					if (!posNullable.HasValue)
-						throw new InvalidOperationException();
-					var (x, y) = posNullable.Value;
-
-					_canvas.DrawLine(x, y, _lastMouseBoardPos.X, _lastMouseBoardPos.Y, connectionPaint);
-				}
-
 				var hotNode = GetHotNode();
 				IPin hotPin = null;
 
 				if (hotNode != null)
 					hotPin = _nodeRenderer.GetPin(hotNode, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
 
-				foreach (var node in _nodes)
-				{
-					foreach (var connection in node.Connections)
-					{
-						var outputPin = GetPin(connection.SourceNodeId, connection.SourcePinId);
-						var inputPin = GetPin(connection.DestNodeId, connection.DestPinId);
-
-						if (outputPin == null || inputPin == null)
-							throw new InvalidOperationException();
-
-						var outputPos = _nodeRenderer.GetPinPos(outputPin.Node, outputPin.Pin);
-						var inputPos = _nodeRenderer.GetPinPos(inputPin.Node, inputPin.Pin);
-
-						if (outputPos == null || inputPos == null)
-							throw new InvalidOperationException();
-
-						var (oX, oY) = outputPos.Value;
-						var (iX, iY) = inputPos.Value;
-
-						if (hotPin != null && (inputPin.Pin.PinId == hotPin.PinId || outputPin.Pin.PinId == hotPin.PinId) && IsDeleteConnectionKeyDown)
-							_canvas.DrawLine(oX, oY, iX, iY, deleteConnectionPaint);
-						else
-							_canvas.DrawLine(oX, oY, iX, iY, connectionPaint);
-					}
-				}
-
-				foreach (var node in _nodes) _nodeRenderer.DrawNode(_canvas, node, IsSelected(node));
+				DrawConnections(hotPin, ephemeralConnectionPaint, connectionPaint, deleteConnectionPaint);
+				DrawNodes();
 			}
 
 			_canvas.Flush();
@@ -450,6 +426,90 @@ namespace Comlink.Render
 				Debug.WriteLine(err);
 
 			GL.Finish();
+		}
+
+		private void DrawNodes()
+		{
+			foreach (var node in _nodes) _nodeRenderer.DrawNode(_canvas, node, IsSelected(node));
+		}
+
+		private void DrawConnection(Vector2 start, Vector2 end, SKPaint paint)
+		{
+			var path = new SKPath();
+
+			path.MoveTo(start.X, start.Y);
+
+			var half = (start + end) / 2;
+
+			path.QuadTo(start.X + 50, start.Y, half.X, half.Y);
+			path.QuadTo(end.X - 50, end.Y, end.X, end.Y);
+
+			_canvas.DrawPath(path, paint);
+		}
+
+		private void DrawConnections(IPin hotPin, SKPaint ephemeralConnectionPaint, SKPaint connectionPaint, SKPaint deleteConnectionPaint)
+		{
+			foreach (var node in _nodes)
+			{
+				foreach (var connection in node.Connections)
+				{
+					var outputPin = GetPin(connection.SourceNodeId, connection.SourcePinId);
+					var inputPin = GetPin(connection.DestNodeId, connection.DestPinId);
+
+					if (outputPin == null || inputPin == null)
+						throw new InvalidOperationException();
+
+					var outputPos = _nodeRenderer.GetPinPos(outputPin.Node, outputPin.Pin);
+					var inputPos = _nodeRenderer.GetPinPos(inputPin.Node, inputPin.Pin);
+
+					if (outputPos == null || inputPos == null)
+						throw new InvalidOperationException();
+
+					if (hotPin != null && (inputPin.Pin.PinId == hotPin.PinId || outputPin.Pin.PinId == hotPin.PinId) && IsDeleteConnectionKeyDown)
+						DrawConnection(outputPos.Value, inputPos.Value, deleteConnectionPaint);
+					else
+						DrawConnection(outputPos.Value, inputPos.Value, connectionPaint);
+				}
+			}
+
+			if (_dragSourcePin != null)
+			{
+				var posNullable = _nodeRenderer.GetPinPos(_dragSourcePin.Node, _dragSourcePin.Pin);
+				if (!posNullable.HasValue)
+					throw new InvalidOperationException();
+
+				var node = GetHotNode();
+
+				var paint = ephemeralConnectionPaint;
+
+				var start = posNullable.Value;
+				var end = _lastMouseBoardPos;
+
+				if (node != null)
+				{
+					var pin = _nodeRenderer.GetPin(node, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
+
+					if (pin != null && _dragSourcePin.Pin.CanConnectTo(pin) && node.NodeId != _dragSourcePin.Node.NodeId)
+					{
+						paint = connectionPaint;
+
+						var pinPos = _nodeRenderer.GetPinPos(node, pin);
+						if (!pinPos.HasValue)
+							throw new InvalidOperationException();
+
+						end = pinPos.Value;
+					}
+				}
+
+				if (_dragSourcePin.Pin is IInputPin)
+				{
+					var temp = start;
+					start = end;
+					end = temp;
+				}
+
+				DrawConnection(start, end, paint);
+			}
 		}
 
 		private void DrawViewportGrid(int gridPitch, SKPoint boardOffset, SKPaint gridPaint)

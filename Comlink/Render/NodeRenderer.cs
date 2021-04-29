@@ -1,5 +1,6 @@
 ﻿using System;
 using Comlink.Extensions;
+using Comlink.Model;
 using Nedry;
 using OpenTK.Mathematics;
 using SkiaSharp;
@@ -8,12 +9,10 @@ namespace Comlink.Render
 {
 	public class NodeRenderer
 	{
+		public float[] SelectionStrokeInterval = {5, 5};
 		private readonly SKTypeface _headerTypeface;
 		private readonly SKTypeface _nodeTypeface;
 		private readonly SKPaint _paint;
-
-		public float[] SelectionStrokeInterval = {5, 5};
-
 		public float NodeCornerRadius { get; set; } = 9;
 		public float NodeBorderSize { get; set; } = 3;
 
@@ -48,7 +47,11 @@ namespace Comlink.Render
 			var numPins = Math.Max(node.InputPins.Count, node.OutputPins.Count);
 			var height = lineHeight * (numPins - 1) - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Descent + 6;
 
-			return new Box2(x - NodeBorderSize, y - headerLineHeight, x + width + NodeBorderSize, y + height + NodeBorderSize);
+			var boundsExpansion = NodeBorderSize;
+
+			// Selection bounds is slightly larger than render bounds to make connection hit testing more ergonomic
+			return new Box2(x - NodeBorderSize - boundsExpansion, y - headerLineHeight - boundsExpansion, x + width + NodeBorderSize + 2 * boundsExpansion,
+				y + height + NodeBorderSize + 2 * boundsExpansion);
 		}
 
 		public IPin GetPin(Node node, float testX, float testY)

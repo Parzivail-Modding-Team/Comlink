@@ -1,15 +1,30 @@
 ﻿using System;
 using Nedry;
 
-namespace Comlink.Render
+namespace Comlink.Model
 {
 	internal class FlowOutputPin : IOutputPin
 	{
 		/// <inheritdoc />
-		public FlowOutputPin(string name)
+		public string Name { get; set; }
+
+		/// <inheritdoc />
+		public Guid PinId { get; init; }
+
+		/// <inheritdoc />
+		public uint Color { get; set; } = 0xFF_FFFFFF;
+
+		/// <inheritdoc />
+		public FlowOutputPin(Guid pinId, string name)
 		{
+			PinId = pinId;
 			Name = name;
-			PinId = Guid.NewGuid();
+		}
+
+		/// <inheritdoc />
+		public bool CanConnectTo(IPin other)
+		{
+			return other is FlowInputPin;
 		}
 
 		protected bool Equals(FlowOutputPin other)
@@ -39,21 +54,6 @@ namespace Comlink.Render
 		public static bool operator !=(FlowOutputPin left, FlowOutputPin right)
 		{
 			return !Equals(left, right);
-		}
-
-		/// <inheritdoc />
-		public string Name { get; set; }
-
-		/// <inheritdoc />
-		public Guid PinId { get; init; }
-
-		/// <inheritdoc />
-		public uint Color { get; set; } = 0xFF_FFFFFF;
-
-		/// <inheritdoc />
-		public bool CanConnectTo(IPin other)
-		{
-			return other is FlowInputPin;
 		}
 	}
 }

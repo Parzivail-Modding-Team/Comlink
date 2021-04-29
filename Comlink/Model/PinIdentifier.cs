@@ -1,6 +1,6 @@
 ﻿using Nedry;
 
-namespace Comlink.Render
+namespace Comlink.Model
 {
 	internal record PinIdentifier(Node Node, IPin Pin);
 }
