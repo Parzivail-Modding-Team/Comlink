@@ -22,8 +22,7 @@ namespace Comlink.Model
 			Name = name;
 			Type = type;
 
-			// TODO
-			Color = (uint) ((type.GetHashCode() & 0xFFFFFF) | 0xFF000000);
+			Color = TypeColorConverter.GetColor(type);
 		}
 
 		/// <inheritdoc />

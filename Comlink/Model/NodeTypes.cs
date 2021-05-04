@@ -8,5 +8,6 @@ namespace Comlink.Model
 		public static readonly Guid Exit = Guid.Parse("6dbba347-9553-42eb-b81c-9c137e2a33c2");
 		public static readonly Guid Branch = Guid.Parse("76d777aa-8640-4725-a557-f7e7f5efbaf3");
 		public static readonly Guid PlayerDialogue = Guid.Parse("fe137d8a-8bf9-4508-8ccc-ee7ebb5ee915");
+		public static readonly Guid VariableGet = Guid.Parse("70dd6168-76ea-4baf-a79e-bfa6922249af");
 	}
 }

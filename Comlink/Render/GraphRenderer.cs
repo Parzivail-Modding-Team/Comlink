@@ -40,6 +40,11 @@ namespace Comlink.Render
 			{
 				X = 400,
 				Y = 250
+			},
+			new VariableGetNode("someBool", typeof(bool))
+			{
+				X = 300,
+				Y = 300
 			}
 		};
 
@@ -81,6 +86,17 @@ namespace Comlink.Render
 				SKTypeface.FromFamilyName("IBM Plex Sans", SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
 				SKTypeface.FromFamilyName("IBM Plex Sans", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
 			);
+
+			var pd = new PlayerDialogueNode
+			{
+				X = 70,
+				Y = 250
+			};
+
+			pd.Add("Hello");
+			pd.Add("World");
+
+			_nodes.Add(pd);
 		}
 
 		private Vector2 GetMousePositionOnBoard(MouseEventArgs e)
