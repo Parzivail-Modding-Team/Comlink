@@ -1,10 +1,8 @@
-﻿using System;
-
-namespace Nedry
+﻿namespace Nedry
 {
 	public interface IPin
 	{
-		Guid PinId { get; init; }
+		PinId PinId { get; init; }
 		string Name { get; set; }
 		uint Color { get; set; }
 		bool CanConnectTo(IPin other);

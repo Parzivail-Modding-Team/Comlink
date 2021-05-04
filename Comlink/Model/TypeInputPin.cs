@@ -11,17 +11,16 @@ namespace Comlink.Model
 		public string Name { get; set; }
 
 		/// <inheritdoc />
-		public Guid PinId { get; init; }
+		public PinId PinId { get; init; }
 
 		/// <inheritdoc />
 		public uint Color { get; set; } = 0xFF_00bfff;
 
-		public TypeInputPin(Guid pinId, string name, Type type)
+		public TypeInputPin(PinId pinId, string name, Type type)
 		{
 			PinId = pinId;
 			Name = name;
 			Type = type;
-			PinId = Guid.NewGuid();
 
 			// TODO
 			Color = (uint) ((type.GetHashCode() & 0xFFFFFF) | 0xFF000000);

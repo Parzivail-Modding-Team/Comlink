@@ -11,11 +11,11 @@ namespace Nedry
 		public float X { get; set; }
 		public float Y { get; set; }
 		public Guid NodeType { get; init; }
-		public Guid NodeId { get; init; }
+		public NodeId NodeId { get; init; }
 		public uint Color { get; set; }
 		public string Name { get; set; }
 
-		public Node(Guid nodeType, Guid nodeId)
+		public Node(Guid nodeType, NodeId nodeId)
 		{
 			NodeType = nodeType;
 			NodeId = nodeId;

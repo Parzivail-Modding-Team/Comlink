@@ -1,21 +1,15 @@
-﻿using System;
-
-namespace Nedry
+﻿namespace Nedry
 {
 	public class Connection
 	{
 		public string Name { get; set; }
-		public Guid SourceNodeId { get; }
-		public Guid SourcePinId { get; }
-		public Guid DestNodeId { get; }
-		public Guid DestPinId { get; }
+		public PinId Source { get; }
+		public PinId Destination { get; }
 
-		public Connection(Guid sourceNodeId, Guid sourcePinId, Guid destNodeId, Guid destPinId)
+		public Connection(PinId source, PinId destination)
 		{
-			SourceNodeId = sourceNodeId;
-			SourcePinId = sourcePinId;
-			DestNodeId = destNodeId;
-			DestPinId = destPinId;
+			Source = source;
+			Destination = destination;
 		}
 	}
 }

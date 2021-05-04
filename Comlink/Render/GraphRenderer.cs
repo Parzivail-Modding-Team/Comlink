@@ -48,7 +48,7 @@ namespace Comlink.Render
 
 		private SKMatrix _boardTransform = SKMatrix.Identity;
 		private SKCanvas _canvas;
-		private PinIdentifier _dragSourcePin;
+		private PinReference _dragSourcePin;
 		private GRGlFramebufferInfo _glInfo;
 		private GRContext _grContext;
 		private Vector2 _lastMouseBoardPos = Vector2.Zero;
@@ -157,21 +157,21 @@ namespace Comlink.Render
 
 		public bool HasSource(IPin pin)
 		{
-			return _nodes.SelectMany(node => node.Connections).Any(connection => connection.DestPinId == pin.PinId);
+			return _nodes.SelectMany(node => node.Connections).Any(connection => connection.Destination == pin.PinId);
 		}
 
 		public bool HasDestination(IPin pin)
 		{
-			return _nodes.SelectMany(node => node.Connections).Any(connection => connection.SourcePinId == pin.PinId);
+			return _nodes.SelectMany(node => node.Connections).Any(connection => connection.Source == pin.PinId);
 		}
 
 		public void RemoveAllConnections(IPin pin)
 		{
 			foreach (var node in _nodes)
-				node.Connections.RemoveAll(connection => connection.SourcePinId == pin.PinId || connection.DestPinId == pin.PinId);
+				node.Connections.RemoveAll(connection => connection.Source == pin.PinId || connection.Destination == pin.PinId);
 		}
 
-		private void CreateConnection(PinIdentifier a, PinIdentifier b)
+		private void CreateConnection(PinReference a, PinReference b)
 		{
 			if (!a.Pin.CanConnectTo(b.Pin))
 				return;
@@ -186,7 +186,7 @@ namespace Comlink.Render
 				if (b.Pin is FlowOutputPin && HasDestination(b.Pin))
 					return;
 
-				b.Node.Connections.Add(new Connection(b.Node.NodeId, b.Pin.PinId, a.Node.NodeId, a.Pin.PinId));
+				b.Node.Connections.Add(new Connection(b.Pin.PinId, a.Pin.PinId));
 			}
 			else if (a.Pin is IOutputPin && b.Pin is IInputPin)
 			{
@@ -198,7 +198,7 @@ namespace Comlink.Render
 				if (a.Pin is FlowOutputPin && HasDestination(a.Pin))
 					return;
 
-				a.Node.Connections.Add(new Connection(a.Node.NodeId, a.Pin.PinId, b.Node.NodeId, b.Pin.PinId));
+				a.Node.Connections.Add(new Connection(a.Pin.PinId, b.Pin.PinId));
 			}
 			else
 			{
@@ -206,15 +206,15 @@ namespace Comlink.Render
 			}
 		}
 
-		private PinIdentifier GetPin(Guid nodeId, Guid pinId)
+		private PinReference GetPin(PinId pinId)
 		{
-			var node = _nodes.FirstOrDefault(node1 => node1.NodeId == nodeId);
+			var node = _nodes.FirstOrDefault(node1 => node1.NodeId == pinId.Node);
 			if (node == null)
 				return null;
 
 			var pin = (IPin) node.InputPins.FirstOrDefault(inputPin => inputPin.PinId == pinId) ?? node.OutputPins.FirstOrDefault(outputPin => outputPin.PinId == pinId);
 
-			return pin == null ? null : new PinIdentifier(node, pin);
+			return pin == null ? null : new PinReference(node, pin);
 		}
 
 		public void OnMouseUp(MouseButtonEventArgs e)
@@ -231,7 +231,7 @@ namespace Comlink.Render
 					var pin = _nodeRenderer.GetPin(node, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
 
 					if (pin != null && node.NodeId != _dragSourcePin.Node.NodeId)
-						CreateConnection(_dragSourcePin, new PinIdentifier(node, pin));
+						CreateConnection(_dragSourcePin, new PinReference(node, pin));
 				}
 			}
 
@@ -262,7 +262,7 @@ namespace Comlink.Render
 						if (IsDeleteConnectionKeyDown)
 							RemoveAllConnections(pin);
 						else
-							_dragSourcePin = new PinIdentifier(node, pin);
+							_dragSourcePin = new PinReference(node, pin);
 					}
 				}
 
@@ -453,8 +453,8 @@ namespace Comlink.Render
 			{
 				foreach (var connection in node.Connections)
 				{
-					var outputPin = GetPin(connection.SourceNodeId, connection.SourcePinId);
-					var inputPin = GetPin(connection.DestNodeId, connection.DestPinId);
+					var outputPin = GetPin(connection.Source);
+					var inputPin = GetPin(connection.Destination);
 
 					if (outputPin == null || inputPin == null)
 						throw new InvalidOperationException();

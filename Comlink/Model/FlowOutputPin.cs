@@ -1,5 +1,4 @@
-﻿using System;
-using Nedry;
+﻿using Nedry;
 
 namespace Comlink.Model
 {
@@ -9,13 +8,13 @@ namespace Comlink.Model
 		public string Name { get; set; }
 
 		/// <inheritdoc />
-		public Guid PinId { get; init; }
+		public PinId PinId { get; init; }
 
 		/// <inheritdoc />
 		public uint Color { get; set; } = 0xFF_FFFFFF;
 
 		/// <inheritdoc />
-		public FlowOutputPin(Guid pinId, string name)
+		public FlowOutputPin(PinId pinId, string name)
 		{
 			PinId = pinId;
 			Name = name;

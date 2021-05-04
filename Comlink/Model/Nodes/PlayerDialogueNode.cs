@@ -2,11 +2,11 @@
 
 namespace Comlink.Model.Nodes
 {
-	public class BranchNode : Node
+	public class PlayerDialogueNode : Node
 	{
-		public BranchNode() : base(NodeTypes.Branch, NodeId.NewId())
+		public PlayerDialogueNode() : base(NodeTypes.PlayerDialogue, NodeId.NewId())
 		{
-			Name = "Branch";
+			Name = "Player Dialogue";
 			Color = 0xFF_ff8c00;
 
 			InputPins.Add(new FlowInputPin(PinId.NewId(NodeId, PinType.Input, 0)));

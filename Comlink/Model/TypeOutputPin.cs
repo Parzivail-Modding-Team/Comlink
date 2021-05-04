@@ -11,12 +11,12 @@ namespace Comlink.Model
 		public string Name { get; set; }
 
 		/// <inheritdoc />
-		public Guid PinId { get; init; }
+		public PinId PinId { get; init; }
 
 		/// <inheritdoc />
 		public uint Color { get; set; } = 0xFF_32cd32;
 
-		public TypeOutputPin(Guid pinId, string name, Type type)
+		public TypeOutputPin(PinId pinId, string name, Type type)
 		{
 			PinId = pinId;
 			Name = name;
