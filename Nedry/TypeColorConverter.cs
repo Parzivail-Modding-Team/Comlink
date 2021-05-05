@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Comlink
+namespace Nedry
 {
 	public class TypeColorConverter
 	{

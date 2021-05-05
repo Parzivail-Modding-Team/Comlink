@@ -1,8 +1,6 @@
-﻿using Nedry;
-
-namespace Comlink.Model
+﻿namespace Nedry
 {
-	internal class FlowInputPin : IInputPin
+	public class FlowInputPin : IInputPin
 	{
 		/// <inheritdoc />
 		public string Name { get; set; } = string.Empty;

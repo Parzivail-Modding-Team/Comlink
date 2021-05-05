@@ -1,9 +1,8 @@
 ﻿using System;
-using Nedry;
 
-namespace Comlink.Model
+namespace Nedry
 {
-	internal class TypeInputPin : IInputPin
+	public class TypeInputPin : IInputPin
 	{
 		public Type Type { get; set; }
 

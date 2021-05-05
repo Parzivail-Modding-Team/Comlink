@@ -1,9 +1,11 @@
-﻿using Nedry;
+﻿using System;
 
-namespace Comlink.Model
+namespace Nedry
 {
-	internal class FlowOutputPin : IOutputPin
+	public class TypeOutputPin : IOutputPin
 	{
+		public Type Type { get; set; }
+
 		/// <inheritdoc />
 		public string Name { get; set; }
 
@@ -11,22 +13,24 @@ namespace Comlink.Model
 		public PinId PinId { get; init; }
 
 		/// <inheritdoc />
-		public uint Color { get; set; } = 0xFF_FFFFFF;
+		public uint Color { get; set; } = 0xFF_32cd32;
 
-		/// <inheritdoc />
-		public FlowOutputPin(PinId pinId, string name)
+		public TypeOutputPin(PinId pinId, string name, Type type)
 		{
 			PinId = pinId;
 			Name = name;
+			Type = type;
+
+			Color = TypeColorConverter.GetColor(type);
 		}
 
 		/// <inheritdoc />
 		public bool CanConnectTo(IPin other)
 		{
-			return other is FlowInputPin;
+			return other is TypeInputPin tip && tip.Type == Type;
 		}
 
-		protected bool Equals(FlowOutputPin other)
+		protected bool Equals(TypeOutputPin other)
 		{
 			return PinId.Equals(other.PinId);
 		}
@@ -36,7 +40,7 @@ namespace Comlink.Model
 		{
 			if (ReferenceEquals(null, obj)) return false;
 			if (ReferenceEquals(this, obj)) return true;
-			return obj.GetType() == GetType() && Equals((FlowOutputPin) obj);
+			return obj.GetType() == GetType() && Equals((TypeOutputPin) obj);
 		}
 
 		/// <inheritdoc />
@@ -45,12 +49,12 @@ namespace Comlink.Model
 			return PinId.GetHashCode();
 		}
 
-		public static bool operator ==(FlowOutputPin left, FlowOutputPin right)
+		public static bool operator ==(TypeOutputPin left, TypeOutputPin right)
 		{
 			return Equals(left, right);
 		}
 
-		public static bool operator !=(FlowOutputPin left, FlowOutputPin right)
+		public static bool operator !=(TypeOutputPin left, TypeOutputPin right)
 		{
 			return !Equals(left, right);
 		}

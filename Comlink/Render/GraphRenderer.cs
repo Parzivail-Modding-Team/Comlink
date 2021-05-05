@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using Comlink.Model;
 using Comlink.Model.Nodes;
 using Nedry;
 using OpenTK.Graphics.OpenGL;
@@ -45,6 +44,17 @@ namespace Comlink.Render
 			{
 				X = 300,
 				Y = 300
+			},
+			new VariableSetNode("otherBool", typeof(bool))
+			{
+				X = 300,
+				Y = 400
+			},
+			new NpcDialogueNode
+			{
+				X = 500,
+				Y = 300,
+				Dialogue = "Dialogue"
 			}
 		};
 
