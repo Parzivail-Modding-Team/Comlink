@@ -11,5 +11,6 @@ namespace Comlink.Model
 		public static readonly Guid VariableGet = Guid.Parse("70dd6168-76ea-4baf-a79e-bfa6922249af");
 		public static readonly Guid NpcDialogue = Guid.Parse("77ac169a-42e9-4400-abd7-19cba64a5d80");
 		public static readonly Guid VariableSet = Guid.Parse("05595073-df39-45d0-8179-33c7d787a063");
+		public static readonly Guid TriggerEvent = Guid.Parse("843948ca-9464-41b6-94ba-ec932f304565");
 	}
 }

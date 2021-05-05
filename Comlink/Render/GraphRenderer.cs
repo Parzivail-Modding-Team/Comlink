@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using Comlink.Model.Nodes;
 using Nedry;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
@@ -18,45 +17,17 @@ namespace Comlink.Render
 		private const SKColorType ColorType = SKColorType.Rgba8888;
 		private const GRSurfaceOrigin SurfaceOrigin = GRSurfaceOrigin.BottomLeft;
 
-		private readonly object _bufferSync = new();
+		private static SKPaint _baseNodePaint;
+		private static SKPaint _gridPaint;
+		private static SKPaint _selectionBoxPaint;
+		private static SKPaint _ephemeralConnectionPaint;
+		private static SKPaint _connectionPaint;
+		private static SKPaint _deleteConnectionPaint;
 
 		private readonly GLWpfControl _control;
 		private readonly NodeRenderer _nodeRenderer;
 
-		private readonly List<Node> _nodes = new()
-		{
-			new InteractNode
-			{
-				X = 70,
-				Y = 70
-			},
-			new BranchNode
-			{
-				X = 300,
-				Y = 150
-			},
-			new ExitNode
-			{
-				X = 400,
-				Y = 250
-			},
-			new VariableGetNode("someBool", typeof(bool))
-			{
-				X = 300,
-				Y = 300
-			},
-			new VariableSetNode("otherBool", typeof(bool))
-			{
-				X = 300,
-				Y = 400
-			},
-			new NpcDialogueNode
-			{
-				X = 500,
-				Y = 300,
-				Dialogue = "Dialogue"
-			}
-		};
+		private readonly List<Node> _nodes = new();
 
 		private readonly List<Node> _selectedNodes = new();
 		private readonly List<Node> _selectedNodesQueue = new();
@@ -83,7 +54,18 @@ namespace Comlink.Render
 		{
 			_control = control;
 
-			var baseNodePaint = new SKPaint
+			SetupStyles();
+
+			_nodeRenderer = new NodeRenderer(
+				_baseNodePaint,
+				SKTypeface.FromFamilyName("Segoe UI", SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
+				SKTypeface.FromFamilyName("Segoe UI", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+			);
+		}
+
+		private static void SetupStyles()
+		{
+			_baseNodePaint = new SKPaint
 			{
 				IsAntialias = true,
 				TextSize = 16,
@@ -91,22 +73,49 @@ namespace Comlink.Render
 				LcdRenderText = true,
 				IsAutohinted = true
 			};
-			_nodeRenderer = new NodeRenderer(
-				baseNodePaint,
-				SKTypeface.FromFamilyName("IBM Plex Sans", SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
-				SKTypeface.FromFamilyName("IBM Plex Sans", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-			);
 
-			var pd = new PlayerDialogueNode
+			_gridPaint = new SKPaint
 			{
-				X = 70,
-				Y = 250
+				Color = new SKColor(0xFF_EFEFEF),
+				Style = SKPaintStyle.Stroke,
+				StrokeWidth = 1,
+				IsAntialias = true
 			};
 
-			pd.Add("Hello");
-			pd.Add("World");
+			_selectionBoxPaint = new SKPaint
+			{
+				Color = new SKColor(0x47_037AFF),
+				Style = SKPaintStyle.Fill,
+				StrokeWidth = 1,
+				IsAntialias = true
+			};
 
-			_nodes.Add(pd);
+			_ephemeralConnectionPaint = new SKPaint
+			{
+				Color = new SKColor(0x47_808080),
+				Style = SKPaintStyle.Stroke,
+				StrokeWidth = 5,
+				IsAntialias = true,
+				StrokeCap = SKStrokeCap.Round
+			};
+
+			_connectionPaint = new SKPaint
+			{
+				Color = new SKColor(0x80_808080),
+				Style = SKPaintStyle.Stroke,
+				StrokeWidth = 5,
+				IsAntialias = true,
+				StrokeCap = SKStrokeCap.Round
+			};
+
+			_deleteConnectionPaint = new SKPaint
+			{
+				Color = new SKColor(0x80_FF0000),
+				Style = SKPaintStyle.Stroke,
+				StrokeWidth = 5,
+				IsAntialias = true,
+				StrokeCap = SKStrokeCap.Round
+			};
 		}
 
 		private Vector2 GetMousePositionOnBoard(MouseEventArgs e)
@@ -375,49 +384,6 @@ namespace Comlink.Render
 
 			_canvas.Clear(SKColors.White);
 
-			var gridPaint = new SKPaint
-			{
-				Color = new SKColor(0xFF_EFEFEF),
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = 1,
-				IsAntialias = true
-			};
-
-			var selectionBoxPaint = new SKPaint
-			{
-				Color = new SKColor(0x47_037AFF),
-				Style = SKPaintStyle.Fill,
-				StrokeWidth = 1,
-				IsAntialias = true
-			};
-
-			var ephemeralConnectionPaint = new SKPaint
-			{
-				Color = new SKColor(0x47_808080),
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = 5,
-				IsAntialias = true,
-				StrokeCap = SKStrokeCap.Round
-			};
-
-			var connectionPaint = new SKPaint
-			{
-				Color = new SKColor(0x80_808080),
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = 5,
-				IsAntialias = true,
-				StrokeCap = SKStrokeCap.Round
-			};
-
-			var deleteConnectionPaint = new SKPaint
-			{
-				Color = new SKColor(0x80_FF0000),
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = 5,
-				IsAntialias = true,
-				StrokeCap = SKStrokeCap.Round
-			};
-
 			// render the canvas
 			using (new SKAutoCanvasRestore(_canvas, true))
 			{
@@ -426,14 +392,14 @@ namespace Comlink.Render
 				var gridPitch = (int) (localGridPitch * _boardTransform.MapRadius(1));
 
 				if (gridPitch > 1)
-					DrawViewportGrid(gridPitch, originOffset, gridPaint);
+					DrawViewportGrid(gridPitch, originOffset, _gridPaint);
 
-				_canvas.DrawCircle(originOffset, 3, gridPaint);
+				_canvas.DrawCircle(originOffset, 3, _gridPaint);
 
 				_canvas.SetMatrix(_boardTransform);
 
 				if (_rectangleSelecting)
-					_canvas.DrawRect(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X - _mouseDownPos.X, _lastMouseBoardPos.Y - _mouseDownPos.Y, selectionBoxPaint);
+					_canvas.DrawRect(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X - _mouseDownPos.X, _lastMouseBoardPos.Y - _mouseDownPos.Y, _selectionBoxPaint);
 
 				var hotNode = GetHotNode();
 				IPin hotPin = null;
@@ -441,7 +407,7 @@ namespace Comlink.Render
 				if (hotNode != null)
 					hotPin = _nodeRenderer.GetPin(hotNode, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
 
-				DrawConnections(hotPin, ephemeralConnectionPaint, connectionPaint, deleteConnectionPaint);
+				DrawConnections(hotPin, _ephemeralConnectionPaint, _connectionPaint, _deleteConnectionPaint);
 				DrawNodes();
 			}
 
