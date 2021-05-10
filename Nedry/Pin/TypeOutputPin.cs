@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Nedry
+namespace Nedry.Pin
 {
 	public class TypeOutputPin : IOutputPin
 	{

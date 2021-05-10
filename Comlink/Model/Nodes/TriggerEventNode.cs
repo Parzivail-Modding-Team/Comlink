@@ -1,10 +1,11 @@
 ﻿using Nedry;
+using Nedry.Pin;
 
 namespace Comlink.Model.Nodes
 {
-	public class TriggerEventNode : Node
+	public class TriggerEventNode : ComlinkNode
 	{
-		public TriggerEventNode(string eventName) : base(NodeTypes.TriggerEvent, NodeId.NewId())
+		public TriggerEventNode(string eventName) : base(NodeType.TriggerEvent, NodeId.NewId())
 		{
 			Name = "Set Variable";
 			Color = 0xFF_bdb76b;

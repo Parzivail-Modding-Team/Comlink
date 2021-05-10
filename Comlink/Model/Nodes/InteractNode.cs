@@ -1,10 +1,11 @@
 ﻿using Nedry;
+using Nedry.Pin;
 
 namespace Comlink.Model.Nodes
 {
-	public class InteractNode : Node
+	public class InteractNode : ComlinkNode
 	{
-		public InteractNode() : base(NodeTypes.Interact, NodeId.NewId())
+		public InteractNode() : base(NodeType.Interact, NodeId.NewId())
 		{
 			Name = "Interact";
 			Color = 0xFF_32cd32;

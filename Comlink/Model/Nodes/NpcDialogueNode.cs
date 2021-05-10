@@ -1,8 +1,9 @@
 ﻿using Nedry;
+using Nedry.Pin;
 
 namespace Comlink.Model.Nodes
 {
-	public class NpcDialogueNode : Node
+	public class NpcDialogueNode : ComlinkNode
 	{
 		private string _dialogue;
 
@@ -16,7 +17,7 @@ namespace Comlink.Model.Nodes
 			}
 		}
 
-		public NpcDialogueNode() : base(NodeTypes.NpcDialogue, NodeId.NewId())
+		public NpcDialogueNode() : base(NodeType.NpcDialogue, NodeId.NewId())
 		{
 			Name = "NPC Dialogue";
 			Color = 0xFF_9370db;

@@ -1,11 +1,12 @@
 ﻿using System;
 using Nedry;
+using Nedry.Pin;
 
 namespace Comlink.Model.Nodes
 {
-	public class VariableSetNode : Node
+	public class VariableSetNode : ComlinkNode
 	{
-		public VariableSetNode(string variable, Type type) : base(NodeTypes.VariableSet, NodeId.NewId())
+		public VariableSetNode(string variable, Type type) : base(NodeType.VariableSet, NodeId.NewId())
 		{
 			Name = "Set Variable";
 			Color = TypeColorConverter.GetColor(type);

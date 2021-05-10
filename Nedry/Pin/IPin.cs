@@ -1,4 +1,4 @@
-﻿namespace Nedry
+﻿namespace Nedry.Pin
 {
 	public interface IPin
 	{

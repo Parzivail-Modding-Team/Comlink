@@ -1,10 +1,11 @@
 ﻿using Nedry;
+using Nedry.Pin;
 
 namespace Comlink.Model.Nodes
 {
-	public class BranchNode : Node
+	public class BranchNode : ComlinkNode
 	{
-		public BranchNode() : base(NodeTypes.Branch, NodeId.NewId())
+		public BranchNode() : base(NodeType.Branch, NodeId.NewId())
 		{
 			Name = "Branch";
 			Color = 0xFF_ff8c00;

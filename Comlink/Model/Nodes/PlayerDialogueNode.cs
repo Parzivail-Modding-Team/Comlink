@@ -1,10 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using Nedry;
+using Nedry.Pin;
 
 namespace Comlink.Model.Nodes
 {
-	public class PlayerDialogueNode : Node, IList<string>
+	public class PlayerDialogueNode : ComlinkNode, IList<string>
 	{
 		private readonly IList<string> _listImplementation = new List<string>();
 
@@ -25,7 +26,7 @@ namespace Comlink.Model.Nodes
 			}
 		}
 
-		public PlayerDialogueNode() : base(NodeTypes.PlayerDialogue, NodeId.NewId())
+		public PlayerDialogueNode() : base(NodeType.PlayerDialogue, NodeId.NewId())
 		{
 			Name = "Player Dialogue";
 			Color = 0xFF_87cefa;

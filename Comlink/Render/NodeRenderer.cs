@@ -2,6 +2,7 @@
 using Comlink.Extensions;
 using Comlink.Model;
 using Nedry;
+using Nedry.Pin;
 using OpenTK.Mathematics;
 using SkiaSharp;
 
@@ -132,7 +133,7 @@ namespace Comlink.Render
 			return null;
 		}
 
-		public void DrawNode(SKCanvas ctx, Node node, bool selected)
+		public void DrawNode(SKCanvas ctx, ComlinkNode node, bool selected)
 		{
 			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
 			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);

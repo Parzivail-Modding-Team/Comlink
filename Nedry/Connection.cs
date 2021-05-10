@@ -1,4 +1,6 @@
-﻿namespace Nedry
+﻿using Nedry.Pin;
+
+namespace Nedry
 {
 	public class Connection
 	{

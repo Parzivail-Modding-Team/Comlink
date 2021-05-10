@@ -1,9 +1,9 @@
-﻿namespace Nedry
+﻿namespace Nedry.Pin
 {
-	public class FlowInputPin : IInputPin
+	public class FlowOutputPin : IOutputPin
 	{
 		/// <inheritdoc />
-		public string Name { get; set; } = string.Empty;
+		public string Name { get; set; }
 
 		/// <inheritdoc />
 		public PinId PinId { get; init; }
@@ -12,18 +12,19 @@
 		public uint Color { get; set; } = 0xFF_FFFFFF;
 
 		/// <inheritdoc />
-		public FlowInputPin(PinId pinId)
+		public FlowOutputPin(PinId pinId, string name)
 		{
 			PinId = pinId;
+			Name = name;
 		}
 
 		/// <inheritdoc />
 		public bool CanConnectTo(IPin other)
 		{
-			return other is FlowOutputPin;
+			return other is FlowInputPin;
 		}
 
-		protected bool Equals(FlowInputPin other)
+		protected bool Equals(FlowOutputPin other)
 		{
 			return PinId.Equals(other.PinId);
 		}
@@ -33,7 +34,7 @@
 		{
 			if (ReferenceEquals(null, obj)) return false;
 			if (ReferenceEquals(this, obj)) return true;
-			return obj.GetType() == GetType() && Equals((FlowInputPin) obj);
+			return obj.GetType() == GetType() && Equals((FlowOutputPin) obj);
 		}
 
 		/// <inheritdoc />
@@ -42,12 +43,12 @@
 			return PinId.GetHashCode();
 		}
 
-		public static bool operator ==(FlowInputPin left, FlowInputPin right)
+		public static bool operator ==(FlowOutputPin left, FlowOutputPin right)
 		{
 			return Equals(left, right);
 		}
 
-		public static bool operator !=(FlowInputPin left, FlowInputPin right)
+		public static bool operator !=(FlowOutputPin left, FlowOutputPin right)
 		{
 			return !Equals(left, right);
 		}

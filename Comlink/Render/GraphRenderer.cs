@@ -4,7 +4,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using Nedry;
+using Comlink.Command;
+using Comlink.Model;
+using Nedry.Pin;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Wpf;
@@ -27,10 +29,8 @@ namespace Comlink.Render
 		private readonly GLWpfControl _control;
 		private readonly NodeRenderer _nodeRenderer;
 
-		private readonly List<Node> _nodes = new();
-
-		private readonly List<Node> _selectedNodes = new();
-		private readonly List<Node> _selectedNodesQueue = new();
+		private readonly List<ComlinkNode> _selectedNodes = new();
+		private readonly List<ComlinkNode> _selectedNodesQueue = new();
 
 		private SKMatrix _boardTransform = SKMatrix.Identity;
 		private SKCanvas _canvas;
@@ -50,8 +50,13 @@ namespace Comlink.Render
 
 		private static bool IsDeleteConnectionKeyDown => Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
 
-		public GraphRenderer(GLWpfControl control)
+		public Graph TargetGraph { get; set; }
+
+		public bool HasSelection => _selectedNodes.Count > 0;
+
+		public GraphRenderer(Graph graph, GLWpfControl control)
 		{
+			TargetGraph = graph;
 			_control = control;
 
 			SetupStyles();
@@ -62,6 +67,8 @@ namespace Comlink.Render
 				SKTypeface.FromFamilyName("Segoe UI", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
 			);
 		}
+
+		public event EventHandler<ICommand<Graph>> CommandExecuted;
 
 		private static void SetupStyles()
 		{
@@ -121,7 +128,12 @@ namespace Comlink.Render
 		private Vector2 GetMousePositionOnBoard(MouseEventArgs e)
 		{
 			var pos = e.GetPosition(_control);
-			var transformedPoint = _boardTransform.Invert().MapPoint((float) pos.X, (float) pos.Y);
+			return ControlToBoardCoords((float) pos.X, (float) pos.Y);
+		}
+
+		public Vector2 ControlToBoardCoords(float x, float y)
+		{
+			var transformedPoint = _boardTransform.Invert().MapPoint(x, y);
 			return new Vector2(transformedPoint.X, transformedPoint.Y);
 		}
 
@@ -162,17 +174,17 @@ namespace Comlink.Render
 			}
 		}
 
-		private Node GetHotNode()
+		private ComlinkNode GetHotNode()
 		{
-			return _nodes.FirstOrDefault(node => _nodeRenderer.GetBounds(node).Contains(new Vector2(_lastMouseBoardPos.X, _lastMouseBoardPos.Y)));
+			return TargetGraph.FirstOrDefault(node => _nodeRenderer.GetBounds(node).Contains(new Vector2(_lastMouseBoardPos.X, _lastMouseBoardPos.Y)));
 		}
 
-		private bool IsSelected(Node node)
+		private bool IsSelected(ComlinkNode node)
 		{
 			return _selectedNodes.Contains(node) || _selectedNodesQueue.Contains(node);
 		}
 
-		private void SelectNode(Node node)
+		private void SelectNode(ComlinkNode node)
 		{
 			if (IsSelected(node))
 				return;
@@ -185,71 +197,9 @@ namespace Comlink.Render
 			var selectionRect = new Box2(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
 
 			_selectedNodesQueue.Clear();
-			foreach (var node in _nodes.Where(node => !_selectedNodes.Contains(node)))
+			foreach (var node in TargetGraph.Where(node => !_selectedNodes.Contains(node)))
 				if (_nodeRenderer.GetBounds(node).Contains(selectionRect))
 					_selectedNodesQueue.Add(node);
-		}
-
-		public bool HasSource(IPin pin)
-		{
-			return _nodes.SelectMany(node => node.Connections).Any(connection => connection.Destination == pin.PinId);
-		}
-
-		public bool HasDestination(IPin pin)
-		{
-			return _nodes.SelectMany(node => node.Connections).Any(connection => connection.Source == pin.PinId);
-		}
-
-		public void RemoveAllConnections(IPin pin)
-		{
-			foreach (var node in _nodes)
-				node.Connections.RemoveAll(connection => connection.Source == pin.PinId || connection.Destination == pin.PinId);
-		}
-
-		private void CreateConnection(PinReference a, PinReference b)
-		{
-			if (!a.Pin.CanConnectTo(b.Pin))
-				return;
-
-			if (b.Pin is IOutputPin && a.Pin is IInputPin)
-			{
-				// b -> a
-
-				if (a.Pin is TypeInputPin && HasSource(a.Pin))
-					return;
-
-				if (b.Pin is FlowOutputPin && HasDestination(b.Pin))
-					return;
-
-				b.Node.Connections.Add(new Connection(b.Pin.PinId, a.Pin.PinId));
-			}
-			else if (a.Pin is IOutputPin && b.Pin is IInputPin)
-			{
-				// a -> b
-
-				if (b.Pin is TypeInputPin && HasSource(b.Pin))
-					return;
-
-				if (a.Pin is FlowOutputPin && HasDestination(a.Pin))
-					return;
-
-				a.Node.Connections.Add(new Connection(a.Pin.PinId, b.Pin.PinId));
-			}
-			else
-			{
-				throw new InvalidOperationException();
-			}
-		}
-
-		private PinReference GetPin(PinId pinId)
-		{
-			var node = _nodes.FirstOrDefault(node1 => node1.NodeId == pinId.Node);
-			if (node == null)
-				return null;
-
-			var pin = (IPin) node.InputPins.FirstOrDefault(inputPin => inputPin.PinId == pinId) ?? node.OutputPins.FirstOrDefault(outputPin => outputPin.PinId == pinId);
-
-			return pin == null ? null : new PinReference(node, pin);
 		}
 
 		public void OnMouseUp(MouseButtonEventArgs e)
@@ -266,7 +216,7 @@ namespace Comlink.Render
 					var pin = _nodeRenderer.GetPin(node, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
 
 					if (pin != null && node.NodeId != _dragSourcePin.Node.NodeId)
-						CreateConnection(_dragSourcePin, new PinReference(node, pin));
+						OnCommandExecuted(new CreateConnectionCommand(_dragSourcePin.Pin.PinId, pin.PinId));
 				}
 			}
 
@@ -295,7 +245,7 @@ namespace Comlink.Render
 					if (pin != null)
 					{
 						if (IsDeleteConnectionKeyDown)
-							RemoveAllConnections(pin);
+							OnCommandExecuted(new ClearConnectionsCommand(TargetGraph, pin.PinId));
 						else
 							_dragSourcePin = new PinReference(node, pin);
 					}
@@ -304,20 +254,20 @@ namespace Comlink.Render
 				if (node == null) // Selected empty space
 				{
 					if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
-						_selectedNodes.Clear();
+						SelectNone();
 
 					_rectangleSelecting = true;
 				}
 				else if (pin == null) // Selected a node but not a pin
 				{
 					if (_selectedNodes.Count == 1 && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
-						_selectedNodes.Clear();
+						SelectNone();
 
 					SelectNode(node);
 				}
 				else // Selected a pin
 				{
-					_selectedNodes.Clear();
+					SelectNone();
 				}
 			}
 		}
@@ -422,7 +372,7 @@ namespace Comlink.Render
 
 		private void DrawNodes()
 		{
-			foreach (var node in _nodes) _nodeRenderer.DrawNode(_canvas, node, IsSelected(node));
+			foreach (var node in TargetGraph) _nodeRenderer.DrawNode(_canvas, node, IsSelected(node));
 		}
 
 		private void DrawConnection(Vector2 start, Vector2 end, SKPaint paint)
@@ -441,12 +391,12 @@ namespace Comlink.Render
 
 		private void DrawConnections(IPin hotPin, SKPaint ephemeralConnectionPaint, SKPaint connectionPaint, SKPaint deleteConnectionPaint)
 		{
-			foreach (var node in _nodes)
+			foreach (var node in TargetGraph)
 			{
 				foreach (var connection in node.Connections)
 				{
-					var outputPin = GetPin(connection.Source);
-					var inputPin = GetPin(connection.Destination);
+					var outputPin = TargetGraph.GetPin(connection.Source);
+					var inputPin = TargetGraph.GetPin(connection.Destination);
 
 					if (outputPin == null || inputPin == null)
 						throw new InvalidOperationException();
@@ -517,6 +467,29 @@ namespace Comlink.Render
 				var lY = y + boardOffset.Y % gridPitch;
 				_canvas.DrawLine(0, lY, _size.Width, lY, gridPaint);
 			}
+		}
+
+		public void SelectAll()
+		{
+			_selectedNodesQueue.AddRange(TargetGraph);
+			CommitSelectionQueue();
+		}
+
+		public void SelectNone()
+		{
+			_selectedNodes.Clear();
+		}
+
+		public void SelectInverse()
+		{
+			_selectedNodesQueue.AddRange(TargetGraph.Where(node => !_selectedNodesQueue.Contains(node)));
+			SelectNone();
+			CommitSelectionQueue();
+		}
+
+		protected virtual void OnCommandExecuted(ICommand<Graph> e)
+		{
+			CommandExecuted?.Invoke(this, e);
 		}
 	}
 }

@@ -4,21 +4,88 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wpf="clr-namespace:OpenTK.Wpf;assembly=GLWpfControl"
+        xmlns:comlink="clr-namespace:Comlink"
+        xmlns:model="clr-namespace:Comlink.Model"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <Window.CommandBindings>
+        <CommandBinding Command="New" CanExecute="AlwaysCanExecute" Executed="NewCommand_Executed" />
+        <CommandBinding Command="Open" CanExecute="AlwaysCanExecute" Executed="OpenCommand_Executed" />
+        <CommandBinding Command="Save" CanExecute="ProjectOpenCanExecute" Executed="SaveCommand_Executed" />
+        <CommandBinding Command="SaveAs" CanExecute="ProjectOpenCanExecute" Executed="SaveAsCommand_Executed" />
+        <CommandBinding Command="Close" CanExecute="ProjectOpenCanExecute" Executed="CloseCommand_Executed" />
+        <CommandBinding Command="Undo" CanExecute="UndoCommand_CanExecute" Executed="UndoCommand_Executed" />
+        <CommandBinding Command="Redo" CanExecute="RedoCommand_CanExecute" Executed="RedoCommand_Executed" />
+        <CommandBinding Command="Cut" CanExecute="HasSelectionCanExecute" Executed="CutCommand_Executed" />
+        <CommandBinding Command="Copy" CanExecute="HasSelectionCanExecute" Executed="CopyCommand_Executed" />
+        <CommandBinding Command="Paste" CanExecute="ProjectOpenCanExecute" Executed="PasteCommand_Executed" />
+        <CommandBinding Command="Delete" CanExecute="HasSelectionCanExecute" Executed="DeleteCommand_Executed" />
+        <CommandBinding Command="SelectAll" CanExecute="AlwaysCanExecute" Executed="SelectAllCommand_Executed" />
+        <CommandBinding Command="{x:Static comlink:MainWindow.SelectNone}" CanExecute="AlwaysCanExecute" Executed="SelectNoneCommand_Executed" />
+        <CommandBinding Command="{x:Static comlink:MainWindow.SelectInverse}" CanExecute="AlwaysCanExecute" Executed="SelectInverseCommand_Executed" />
+        <CommandBinding Command="{x:Static comlink:MainWindow.CreateNode}" CanExecute="ProjectOpenCanExecute" Executed="CreateNodeCommand_Executed" />
+    </Window.CommandBindings>
 
-        <wpf:GLWpfControl
-            Grid.Column="0"
-            x:Name="Viewport"
-            MouseMove="Viewport_OnMouseMove"
-            MouseDown="Viewport_OnMouseDown"
-            MouseUp="Viewport_OnMouseUp"
-            MouseWheel="Viewport_OnMouseWheel"
-            SizeChanged="Viewport_OnSizeChanged"
-            Render="Viewport_OnRender" />
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Menu>
+            <MenuItem Header="_File">
+                <MenuItem Header="_New" Command="New" />
+                <MenuItem Header="_Open" Command="Open" />
+                <MenuItem Header="_Save" Command="Save" />
+                <MenuItem Header="Save _As" Command="SaveAs" />
+                <Separator />
+                <MenuItem Header="_Close" Command="Close" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo" Command="Undo" />
+                <MenuItem Header="_Redo" Command="Redo" />
+                <Separator />
+                <MenuItem Header="Cu_t" Command="Cut" />
+                <MenuItem Header="_Copy" Command="Copy" />
+                <MenuItem Header="_Paste" Command="Paste" />
+                <Separator />
+                <MenuItem Header="_Delete" Command="Delete" />
+                <Separator />
+                <MenuItem Header="Select _All" Command="SelectAll" />
+                <MenuItem Header="Select _None" Command="{x:Static comlink:MainWindow.SelectNone}" />
+                <MenuItem Header="Select _Inverse" Command="{x:Static comlink:MainWindow.SelectInverse}" />
+            </MenuItem>
+            <MenuItem Header="_Nodes">
+                <MenuItem Header="_New">
+                    <MenuItem Header="Interact" CommandParameter="{x:Static model:NodeType.Interact}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                    <MenuItem Header="Exit" CommandParameter="{x:Static model:NodeType.Exit}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                    <Separator />
+                    <MenuItem Header="Player Dialogue" CommandParameter="{x:Static model:NodeType.PlayerDialogue}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                    <MenuItem Header="NPC Dialogue" CommandParameter="{x:Static model:NodeType.NpcDialogue}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                    <Separator />
+                    <MenuItem Header="Variable Get" CommandParameter="{x:Static model:NodeType.VariableGet}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                    <MenuItem Header="Variable Set" CommandParameter="{x:Static model:NodeType.VariableSet}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                    <MenuItem Header="Branch" CommandParameter="{x:Static model:NodeType.Branch}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                    <Separator />
+                    <MenuItem Header="Trigger Event" CommandParameter="{x:Static model:NodeType.TriggerEvent}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                </MenuItem>
+            </MenuItem>
+        </Menu>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <wpf:GLWpfControl
+                Grid.Column="0"
+                x:Name="Viewport"
+                MouseMove="Viewport_OnMouseMove"
+                MouseDown="Viewport_OnMouseDown"
+                MouseUp="Viewport_OnMouseUp"
+                MouseWheel="Viewport_OnMouseWheel"
+                SizeChanged="Viewport_OnSizeChanged"
+                Render="Viewport_OnRender" />
+        </Grid>
     </Grid>
 </Window>

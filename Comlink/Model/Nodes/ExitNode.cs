@@ -1,10 +1,11 @@
 ﻿using Nedry;
+using Nedry.Pin;
 
 namespace Comlink.Model.Nodes
 {
-	public class ExitNode : Node
+	public class ExitNode : ComlinkNode
 	{
-		public ExitNode() : base(NodeTypes.Exit, NodeId.NewId())
+		public ExitNode() : base(NodeType.Exit, NodeId.NewId())
 		{
 			Name = "Exit";
 			Color = 0xFF_cd5c5c;
