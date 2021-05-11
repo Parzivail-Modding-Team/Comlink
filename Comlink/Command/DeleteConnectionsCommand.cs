@@ -1,17 +1,15 @@
-﻿using System.Linq;
-using Comlink.Render;
+﻿using Comlink.Render;
 using Nedry;
-using Nedry.Pin;
 
 namespace Comlink.Command
 {
-	public class ClearConnectionsCommand : ICommand<Graph>
+	public class DeleteConnectionsCommand : ICommand<Graph>
 	{
 		private readonly Connection[] _connections;
 
-		public ClearConnectionsCommand(Graph graph, PinId pin)
+		public DeleteConnectionsCommand(Connection[] connections)
 		{
-			_connections = graph.SelectMany(node => node.Connections.Where(connection => connection.Source == pin || connection.Destination == pin)).ToArray();
+			_connections = connections;
 		}
 
 		/// <inheritdoc />

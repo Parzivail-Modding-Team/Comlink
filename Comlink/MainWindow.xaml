@@ -7,7 +7,15 @@
         xmlns:comlink="clr-namespace:Comlink"
         xmlns:model="clr-namespace:Comlink.Model"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="13"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto"
+        Background="{DynamicResource MaterialDesignPaper}"
+        FontFamily="{DynamicResource MaterialDesignFont}"
+        DataContext="{Binding RelativeSource={RelativeSource Self}}">
     <Window.CommandBindings>
         <CommandBinding Command="New" CanExecute="AlwaysCanExecute" Executed="NewCommand_Executed" />
         <CommandBinding Command="Open" CanExecute="AlwaysCanExecute" Executed="OpenCommand_Executed" />
@@ -30,6 +38,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Menu>
@@ -86,6 +95,14 @@
                 MouseWheel="Viewport_OnMouseWheel"
                 SizeChanged="Viewport_OnSizeChanged"
                 Render="Viewport_OnRender" />
+        </Grid>
+
+        <Grid Grid.Row="2" Visibility="{Binding OneSelection, Converter={StaticResource BooleanToVisibility}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ContentControl x:Name="NodePropsControl" />
         </Grid>
     </Grid>
 </Window>

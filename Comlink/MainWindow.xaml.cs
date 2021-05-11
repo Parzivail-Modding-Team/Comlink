@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using Comlink.Command;
+using Comlink.Controls;
 using Comlink.Model;
 using Comlink.Model.Nodes;
 using Comlink.Project;
@@ -23,8 +26,16 @@ namespace Comlink
 
 		public static readonly RoutedCommand CreateNode = new();
 
+		private readonly ObservableCollection<ComlinkNode> _selectedNodes = new();
 		private readonly GraphRenderer _graphRenderer;
+
 		private ComlinkProject _loadedProject;
+
+		public event PropertyChangedEventHandler PropertyChanged;
+
+		public bool NoSelection => _selectedNodes.Count == 0;
+		public bool OneSelection => _selectedNodes.Count == 1;
+		public ComlinkNode SelectedNode => _selectedNodes.FirstOrDefault();
 
 		public ComlinkProject LoadedProject
 		{
@@ -60,9 +71,51 @@ namespace Comlink
 
 			_graphRenderer = new GraphRenderer(LoadedProject.Graph, Viewport);
 			_graphRenderer.CommandExecuted += GraphRendererOnCommandExecuted;
+			_graphRenderer.SelectionChanged += GraphRendererOnSelectionChanged;
+
+			_selectedNodes.CollectionChanged += SelectedNodesChanged;
 		}
 
-		public event PropertyChangedEventHandler PropertyChanged;
+		private void SelectedNodesChanged(object sender, NotifyCollectionChangedEventArgs e)
+		{
+			OnPropertyChanged(nameof(NoSelection));
+			OnPropertyChanged(nameof(OneSelection));
+			OnPropertyChanged(nameof(SelectedNode));
+
+			var node = SelectedNode;
+			if (node == null)
+				return;
+
+			switch (node.NodeType)
+			{
+				case NodeType.Interact:
+				case NodeType.Exit:
+				case NodeType.Branch:
+					NodePropsControl.Content = null;
+					break;
+				case NodeType.PlayerDialogue:
+					NodePropsControl.Content = new PlayerDialogueEditControl((PlayerDialogueNode) node);
+					break;
+				case NodeType.NpcDialogue:
+					break;
+				case NodeType.VariableGet:
+					break;
+				case NodeType.VariableSet:
+					break;
+				case NodeType.TriggerEvent:
+					break;
+				default:
+					throw new ArgumentOutOfRangeException();
+			}
+		}
+
+		private void GraphRendererOnSelectionChanged(object sender, EventArgs e)
+		{
+			_selectedNodes.Clear();
+
+			foreach (var node in _graphRenderer.Selection)
+				_selectedNodes.Add(node);
+		}
 
 		private void GraphRendererOnCommandExecuted(object sender, ICommand<Graph> e)
 		{
@@ -168,6 +221,18 @@ namespace Comlink
 
 		private void DeleteCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			foreach (var node in _graphRenderer.Selection)
+			{
+				var connections = _loadedProject.Graph
+					.SelectMany(n => n
+						.Connections
+						.Where(connection => connection.Source.Node == node.NodeId || connection.Destination.Node == node.NodeId)
+					).ToArray();
+				if (connections.Length > 0)
+					_loadedProject.CommandStack.ApplyCommand(new DeleteConnectionsCommand(connections));
+			}
+
+			_loadedProject.CommandStack.ApplyCommand(new DeleteNodesCommand(_graphRenderer.Selection.ToArray()));
 		}
 
 		private void SelectAllCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -233,15 +298,39 @@ namespace Comlink
 					break;
 				}
 				case NodeType.PlayerDialogue:
+				{
+					var node = new PlayerDialogueNode
+					{
+						X = centerX,
+						Y = centerY
+					};
+					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
 					break;
+				}
 				case NodeType.NpcDialogue:
+				{
+					var node = new NpcDialogueNode
+					{
+						X = centerX,
+						Y = centerY
+					};
+					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
 					break;
+				}
 				case NodeType.VariableGet:
 					break;
 				case NodeType.VariableSet:
 					break;
 				case NodeType.TriggerEvent:
+				{
+					var node = new TriggerEventNode("event")
+					{
+						X = centerX,
+						Y = centerY
+					};
+					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
 					break;
+				}
 				default:
 					throw new ArgumentOutOfRangeException();
 			}

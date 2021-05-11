@@ -29,7 +29,6 @@ namespace Comlink.Render
 		private readonly GLWpfControl _control;
 		private readonly NodeRenderer _nodeRenderer;
 
-		private readonly List<ComlinkNode> _selectedNodes = new();
 		private readonly List<ComlinkNode> _selectedNodesQueue = new();
 
 		private SKMatrix _boardTransform = SKMatrix.Identity;
@@ -48,11 +47,15 @@ namespace Comlink.Render
 		private SKSizeI _size;
 		private SKSurface _surface;
 
+		public event EventHandler<ICommand<Graph>> CommandExecuted;
+		public event EventHandler<EventArgs> SelectionChanged;
+
 		private static bool IsDeleteConnectionKeyDown => Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
 
 		public Graph TargetGraph { get; set; }
 
-		public bool HasSelection => _selectedNodes.Count > 0;
+		public bool HasSelection => Selection.Count > 0;
+		public List<ComlinkNode> Selection { get; } = new();
 
 		public GraphRenderer(Graph graph, GLWpfControl control)
 		{
@@ -67,8 +70,6 @@ namespace Comlink.Render
 				SKTypeface.FromFamilyName("Segoe UI", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
 			);
 		}
-
-		public event EventHandler<ICommand<Graph>> CommandExecuted;
 
 		private static void SetupStyles()
 		{
@@ -161,7 +162,7 @@ namespace Comlink.Render
 				if (e.LeftButton == MouseButtonState.Pressed)
 				{
 					if (node != null)
-						foreach (var selectedNode in _selectedNodes)
+						foreach (var selectedNode in Selection)
 						{
 							selectedNode.X += dX;
 							selectedNode.Y += dY;
@@ -181,7 +182,7 @@ namespace Comlink.Render
 
 		private bool IsSelected(ComlinkNode node)
 		{
-			return _selectedNodes.Contains(node) || _selectedNodesQueue.Contains(node);
+			return Selection.Contains(node) || _selectedNodesQueue.Contains(node);
 		}
 
 		private void SelectNode(ComlinkNode node)
@@ -189,7 +190,7 @@ namespace Comlink.Render
 			if (IsSelected(node))
 				return;
 
-			_selectedNodes.Add(node);
+			Selection.Add(node);
 		}
 
 		private void SelectAllInSelectionRectangle()
@@ -197,7 +198,7 @@ namespace Comlink.Render
 			var selectionRect = new Box2(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
 
 			_selectedNodesQueue.Clear();
-			foreach (var node in TargetGraph.Where(node => !_selectedNodes.Contains(node)))
+			foreach (var node in TargetGraph.Where(node => !Selection.Contains(node)))
 				if (_nodeRenderer.GetBounds(node).Contains(selectionRect))
 					_selectedNodesQueue.Add(node);
 		}
@@ -225,8 +226,10 @@ namespace Comlink.Render
 
 		private void CommitSelectionQueue()
 		{
-			_selectedNodes.AddRange(_selectedNodesQueue);
+			Selection.AddRange(_selectedNodesQueue);
 			_selectedNodesQueue.Clear();
+
+			OnSelectionChanged();
 		}
 
 		public void OnMouseDown(MouseButtonEventArgs e)
@@ -245,9 +248,19 @@ namespace Comlink.Render
 					if (pin != null)
 					{
 						if (IsDeleteConnectionKeyDown)
-							OnCommandExecuted(new ClearConnectionsCommand(TargetGraph, pin.PinId));
+						{
+							var connections = TargetGraph
+								.SelectMany(n => n
+									.Connections
+									.Where(connection => connection.Source == pin.PinId || connection.Destination == pin.PinId)
+								).ToArray();
+							if (connections.Length > 0)
+								OnCommandExecuted(new DeleteConnectionsCommand(connections));
+						}
 						else
+						{
 							_dragSourcePin = new PinReference(node, pin);
+						}
 					}
 				}
 
@@ -260,7 +273,7 @@ namespace Comlink.Render
 				}
 				else if (pin == null) // Selected a node but not a pin
 				{
-					if (_selectedNodes.Count == 1 && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
+					if (Selection.Count == 1 && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
 						SelectNone();
 
 					SelectNode(node);
@@ -477,7 +490,9 @@ namespace Comlink.Render
 
 		public void SelectNone()
 		{
-			_selectedNodes.Clear();
+			Selection.Clear();
+
+			OnSelectionChanged();
 		}
 
 		public void SelectInverse()
@@ -490,6 +505,11 @@ namespace Comlink.Render
 		protected virtual void OnCommandExecuted(ICommand<Graph> e)
 		{
 			CommandExecuted?.Invoke(this, e);
+		}
+
+		protected virtual void OnSelectionChanged()
+		{
+			SelectionChanged?.Invoke(this, EventArgs.Empty);
 		}
 	}
 }
