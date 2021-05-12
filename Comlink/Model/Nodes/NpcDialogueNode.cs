@@ -17,7 +17,7 @@ namespace Comlink.Model.Nodes
 			}
 		}
 
-		public NpcDialogueNode() : base(NodeType.NpcDialogue, NodeId.NewId())
+		public NpcDialogueNode() : base(NodeType.NpcDialogue, UniqueId.NewId())
 		{
 			Name = "NPC Dialogue";
 			Color = 0xFF_9370db;

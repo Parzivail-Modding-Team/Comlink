@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Collections.ObjectModel;
-using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -12,6 +11,8 @@ using Comlink.Model;
 using Comlink.Model.Nodes;
 using Comlink.Project;
 using Comlink.Render;
+using Nedry;
+using Nedry.Pin;
 using OpenTK.Wpf;
 
 namespace Comlink
@@ -26,16 +27,14 @@ namespace Comlink
 
 		public static readonly RoutedCommand CreateNode = new();
 
-		private readonly ObservableCollection<ComlinkNode> _selectedNodes = new();
 		private readonly GraphRenderer _graphRenderer;
 
 		private ComlinkProject _loadedProject;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public bool NoSelection => _selectedNodes.Count == 0;
-		public bool OneSelection => _selectedNodes.Count == 1;
-		public ComlinkNode SelectedNode => _selectedNodes.FirstOrDefault();
+		public bool OneSelection => _graphRenderer != null && _graphRenderer.Selection.Count == 1;
+		public ComlinkNode SelectedNode => _graphRenderer?.Selection.FirstOrDefault();
 
 		public ComlinkProject LoadedProject
 		{
@@ -71,14 +70,11 @@ namespace Comlink
 
 			_graphRenderer = new GraphRenderer(LoadedProject.Graph, Viewport);
 			_graphRenderer.CommandExecuted += GraphRendererOnCommandExecuted;
-			_graphRenderer.SelectionChanged += GraphRendererOnSelectionChanged;
-
-			_selectedNodes.CollectionChanged += SelectedNodesChanged;
+			_graphRenderer.SelectionChanged += SelectedNodesChanged;
 		}
 
-		private void SelectedNodesChanged(object sender, NotifyCollectionChangedEventArgs e)
+		private void SelectedNodesChanged(object sender, EventArgs eventArgs)
 		{
-			OnPropertyChanged(nameof(NoSelection));
 			OnPropertyChanged(nameof(OneSelection));
 			OnPropertyChanged(nameof(SelectedNode));
 
@@ -94,8 +90,41 @@ namespace Comlink
 					NodePropsControl.Content = null;
 					break;
 				case NodeType.PlayerDialogue:
-					NodePropsControl.Content = new PlayerDialogueEditControl((PlayerDialogueNode) node);
+				{
+					var uidToOldPinMap = node.OutputPins.Select(pin => new KeyValuePair<UniqueId, IOutputPin>(UniqueId.NewId(), pin)).ToArray();
+					var oldConnectionMap = node.Connections.Select(connection =>
+						new KeyValuePair<Connection, UniqueId>(connection, uidToOldPinMap.First(pair => pair.Value.PinId == connection.Source).Key)).ToArray();
+
+					var control = new PlayerDialogueEditControl(uidToOldPinMap);
+					control.ChangedApplied += (ctrl, newOptions) =>
+					{
+						var pdNode = _loadedProject.Graph.First(comlinkNode => comlinkNode.NodeId == node.NodeId);
+
+						FlowOutputPin CreatePin(string dialogue, short i)
+						{
+							return new(PinId.NewId(pdNode.NodeId, PinType.Output, i), dialogue);
+						}
+
+						short index = 0;
+						var uidToNewPinMap = newOptions.Select(pair => new KeyValuePair<UniqueId, IOutputPin>(pair.Key, CreatePin(pair.Value, index++))).ToArray();
+
+						// remap pin IDs
+						pdNode.OutputPins.Clear();
+						pdNode.OutputPins.AddRange(uidToNewPinMap.Select(pair => pair.Value));
+
+						// remap old connections if possible
+						pdNode.Connections.Clear();
+						foreach (var (connection, sourceUid) in oldConnectionMap)
+						{
+							if (uidToNewPinMap.All(m => m.Key != sourceUid)) continue;
+
+							var source = uidToNewPinMap.FirstOrDefault(m => m.Key == sourceUid);
+							pdNode.Connections.Add(new Connection(source.Value.PinId, connection.Destination));
+						}
+					};
+					NodePropsControl.Content = control;
 					break;
+				}
 				case NodeType.NpcDialogue:
 					break;
 				case NodeType.VariableGet:
@@ -107,14 +136,6 @@ namespace Comlink
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
-		}
-
-		private void GraphRendererOnSelectionChanged(object sender, EventArgs e)
-		{
-			_selectedNodes.Clear();
-
-			foreach (var node in _graphRenderer.Selection)
-				_selectedNodes.Add(node);
 		}
 
 		private void GraphRendererOnCommandExecuted(object sender, ICommand<Graph> e)

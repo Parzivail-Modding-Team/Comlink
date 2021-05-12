@@ -1,26 +1,26 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
+using System.Linq;
 
 namespace Nedry.Pin
 {
 	public class PinId
 	{
 		private readonly byte[] _id;
-		public NodeId Node { get; }
+		public UniqueId Node { get; }
 
 		public PinId(string nodeId, string id)
 		{
-			Node = new NodeId(nodeId);
+			Node = new UniqueId(nodeId);
 			_id = IdHelper.FromString(id);
 		}
 
-		public PinId(NodeId node, byte[] id)
+		public PinId(UniqueId node, byte[] id)
 		{
 			Node = node;
 			_id = id;
 		}
 
-		public static PinId NewId(NodeId parent, PinType type, short pinIdx)
+		public static PinId NewId(UniqueId parent, PinType type, short pinIdx)
 		{
 			return new(parent, new[] {(byte) type, (byte) ((pinIdx >> 8) & 0xFF), (byte) (pinIdx & 0xFF)});
 		}
@@ -42,7 +42,17 @@ namespace Nedry.Pin
 		/// <inheritdoc />
 		public override int GetHashCode()
 		{
-			return HashCode.Combine(Node, _id);
+			unchecked
+			{
+				const int p = 16777619;
+				var hash = _id.Aggregate((int) 2166136261, (current, t) => (current ^ t) * p);
+				hash += hash << 13;
+				hash ^= hash >> 7;
+				hash += hash << 3;
+				hash ^= hash >> 17;
+				hash += hash << 5;
+				return hash ^ (31 * Node.GetHashCode());
+			}
 		}
 
 		public static bool operator ==(PinId left, PinId right)

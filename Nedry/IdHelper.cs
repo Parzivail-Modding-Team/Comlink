@@ -2,14 +2,26 @@
 
 namespace Nedry
 {
-	internal class IdHelper
+	public class IdHelper
 	{
-		private static readonly Random Rand = new();
+		private static Random _rand = new();
+
+		public static void SetSeed(int seed)
+		{
+			_rand = new Random(seed);
+		}
 
 		public static byte[] RandomBytes(int n)
 		{
 			var bytes = new byte[n];
-			Rand.NextBytes(bytes);
+			_rand.NextBytes(bytes);
+			return bytes;
+		}
+
+		public static byte[] RandomBytes(int seed, int n)
+		{
+			var bytes = new byte[n];
+			_rand.NextBytes(bytes);
 			return bytes;
 		}
 

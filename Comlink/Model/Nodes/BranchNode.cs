@@ -5,7 +5,7 @@ namespace Comlink.Model.Nodes
 {
 	public class BranchNode : ComlinkNode
 	{
-		public BranchNode() : base(NodeType.Branch, NodeId.NewId())
+		public BranchNode() : base(NodeType.Branch, UniqueId.NewId())
 		{
 			Name = "Branch";
 			Color = 0xFF_ff8c00;

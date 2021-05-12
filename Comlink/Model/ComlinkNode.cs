@@ -7,7 +7,7 @@ namespace Comlink.Model
 		public NodeType NodeType { get; init; }
 
 		/// <inheritdoc />
-		public ComlinkNode(NodeType type, NodeId nodeId) : base(nodeId)
+		public ComlinkNode(NodeType type, UniqueId nodeId) : base(nodeId)
 		{
 			NodeType = type;
 		}

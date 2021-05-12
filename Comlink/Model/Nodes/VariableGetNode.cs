@@ -6,7 +6,7 @@ namespace Comlink.Model.Nodes
 {
 	public class VariableGetNode : ComlinkNode
 	{
-		public VariableGetNode(string variable, Type type) : base(NodeType.VariableGet, NodeId.NewId())
+		public VariableGetNode(string variable, Type type) : base(NodeType.VariableGet, UniqueId.NewId())
 		{
 			Name = "Read Variable";
 			Color = TypeColorConverter.GetColor(type);

@@ -10,11 +10,11 @@ namespace Nedry
 		public readonly List<IOutputPin> OutputPins = new();
 		public float X { get; set; }
 		public float Y { get; set; }
-		public NodeId NodeId { get; init; }
+		public UniqueId NodeId { get; init; }
 		public uint Color { get; set; }
 		public string Name { get; set; }
 
-		public Node(NodeId nodeId)
+		public Node(UniqueId nodeId)
 		{
 			NodeId = nodeId;
 		}

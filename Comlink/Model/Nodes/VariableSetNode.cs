@@ -6,7 +6,7 @@ namespace Comlink.Model.Nodes
 {
 	public class VariableSetNode : ComlinkNode
 	{
-		public VariableSetNode(string variable, Type type) : base(NodeType.VariableSet, NodeId.NewId())
+		public VariableSetNode(string variable, Type type) : base(NodeType.VariableSet, UniqueId.NewId())
 		{
 			Name = "Set Variable";
 			Color = TypeColorConverter.GetColor(type);

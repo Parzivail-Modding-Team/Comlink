@@ -5,7 +5,7 @@ namespace Comlink.Model.Nodes
 {
 	public class ExitNode : ComlinkNode
 	{
-		public ExitNode() : base(NodeType.Exit, NodeId.NewId())
+		public ExitNode() : base(NodeType.Exit, UniqueId.NewId())
 		{
 			Name = "Exit";
 			Color = 0xFF_cd5c5c;

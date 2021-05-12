@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Comlink.Model.Nodes;
+using Comlink.Util;
+using Nedry;
+using Nedry.Pin;
 
 namespace Comlink.Controls
 {
@@ -13,14 +16,14 @@ namespace Comlink.Controls
 		public static readonly RoutedCommand DeleteSelectedCommand = new();
 		public static readonly RoutedCommand ApplyCommand = new();
 
-		public PlayerDialogueNode Node { get; }
+		public event EventHandler<Dictionary<UniqueId, string>> ChangedApplied;
 
-		public ObservableCollection<SelectableWrapper<string>> DialogueOptions { get; set; }
+		public ObservableCollection<KeyedSelectableWrapper<string>> DialogueOptions { get; set; }
 
-		public PlayerDialogueEditControl(PlayerDialogueNode node)
+		public PlayerDialogueEditControl(KeyValuePair<UniqueId, IOutputPin>[] node)
 		{
-			Node = node;
-			DialogueOptions = new ObservableCollection<SelectableWrapper<string>>(node.Select(s => new SelectableWrapper<string>(s)));
+			DialogueOptions = new ObservableCollection<KeyedSelectableWrapper<string>>(node.Select(pair => new KeyedSelectableWrapper<string>(pair.Key, pair.Value.Name)));
+
 			InitializeComponent();
 		}
 
@@ -31,17 +34,22 @@ namespace Comlink.Controls
 
 		private void AddCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
-			DialogueOptions.Add(new SelectableWrapper<string>("Dialogue Option"));
+			DialogueOptions.Add(new KeyedSelectableWrapper<string>(UniqueId.NewId(), "Dialogue Option"));
 		}
 
 		private void DeleteSelectedCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
-			throw new NotImplementedException();
+			DialogueOptions.RemoveAll(wrapper => wrapper.Selected);
 		}
 
 		private void ApplyCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
-			throw new NotImplementedException();
+			OnChangedApplied(DialogueOptions.ToDictionary(wrapper => wrapper.Id, wrapper => wrapper.Value));
+		}
+
+		protected virtual void OnChangedApplied(Dictionary<UniqueId, string> e)
+		{
+			ChangedApplied?.Invoke(this, e);
 		}
 	}
 }

@@ -5,7 +5,7 @@ namespace Comlink.Model.Nodes
 {
 	public class TriggerEventNode : ComlinkNode
 	{
-		public TriggerEventNode(string eventName) : base(NodeType.TriggerEvent, NodeId.NewId())
+		public TriggerEventNode(string eventName) : base(NodeType.TriggerEvent, UniqueId.NewId())
 		{
 			Name = "Set Variable";
 			Color = 0xFF_bdb76b;

@@ -5,8 +5,8 @@ namespace Nedry
 	public class Connection
 	{
 		public string Name { get; set; }
-		public PinId Source { get; }
-		public PinId Destination { get; }
+		public PinId Source { get; set; }
+		public PinId Destination { get; set; }
 
 		public Connection(PinId source, PinId destination)
 		{
