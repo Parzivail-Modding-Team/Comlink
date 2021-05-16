@@ -117,7 +117,7 @@ namespace Comlink
 							pdNode.Connections.Add(new Connection(source.Value.PinId, connection.Destination));
 						}
 
-						_loadedProject.CommandStack.ApplyCommand(new SetOutputsAndConnectionsCommand(node, outputPins, connections.ToArray()));
+						_loadedProject.CommandStack.ApplyCommand(new SetOutputsAndConnectionsCommand(pdNode, outputPins, connections.ToArray()));
 					};
 					NodePropsControl.Content = control;
 					break;
