@@ -84,7 +84,7 @@ namespace Comlink.Render
 
 			_gridPaint = new SKPaint
 			{
-				Color = new SKColor(0xFF_EFEFEF),
+				Color = new SKColor(0xFF_E0E0E0),
 				Style = SKPaintStyle.Stroke,
 				StrokeWidth = 1,
 				IsAntialias = true
@@ -345,7 +345,7 @@ namespace Comlink.Render
 			if (_surface == null || _canvas == null)
 				throw new InvalidOperationException();
 
-			_canvas.Clear(SKColors.White);
+			_canvas.Clear(new SKColor(0xFF_F0F0F0));
 
 			// render the canvas
 			using (new SKAutoCanvasRestore(_canvas, true))

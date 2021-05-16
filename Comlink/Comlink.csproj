@@ -2,12 +2,12 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net5.0-windows</TargetFramework>
+        <TargetFramework>net5.0-windows10.0.18362.0</TargetFramework>
         <UseWPF>true</UseWPF>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="MaterialDesignThemes" Version="4.0.0"/>
+        <PackageReference Include="ModernWpfUI" Version="0.9.4"/>
         <PackageReference Include="OpenTK" Version="4.4.0"/>
         <PackageReference Include="OpenTK.GLWpfControl" Version="4.1.0"/>
         <PackageReference Include="SkiaSharp" Version="2.80.3-preview.40"/>

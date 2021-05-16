@@ -96,24 +96,19 @@ namespace Comlink
 						new KeyValuePair<Connection, UniqueId>(connection, uidToOldPinMap.First(pair => pair.Value.PinId == connection.Source).Key)).ToArray();
 
 					var control = new PlayerDialogueEditControl(uidToOldPinMap);
-					control.ChangedApplied += (ctrl, newOptions) =>
+					control.ChangesApplied += (ctrl, newOptions) =>
 					{
 						var pdNode = _loadedProject.Graph.First(comlinkNode => comlinkNode.NodeId == node.NodeId);
 
-						FlowOutputPin CreatePin(string dialogue, short i)
-						{
-							return new(PinId.NewId(pdNode.NodeId, PinType.Output, i), dialogue);
-						}
-
 						short index = 0;
-						var uidToNewPinMap = newOptions.Select(pair => new KeyValuePair<UniqueId, IOutputPin>(pair.Key, CreatePin(pair.Value, index++))).ToArray();
+						var uidToNewPinMap = newOptions.Select(pair =>
+							new KeyValuePair<UniqueId, IOutputPin>(pair.Key, new FlowOutputPin(PinId.NewId(pdNode.NodeId, PinType.Output, index++), pair.Value))).ToArray();
 
 						// remap pin IDs
-						pdNode.OutputPins.Clear();
-						pdNode.OutputPins.AddRange(uidToNewPinMap.Select(pair => pair.Value));
+						var outputPins = uidToNewPinMap.Select(pair => pair.Value).ToArray();
 
 						// remap old connections if possible
-						pdNode.Connections.Clear();
+						var connections = new List<Connection>();
 						foreach (var (connection, sourceUid) in oldConnectionMap)
 						{
 							if (uidToNewPinMap.All(m => m.Key != sourceUid)) continue;
@@ -121,6 +116,8 @@ namespace Comlink
 							var source = uidToNewPinMap.FirstOrDefault(m => m.Key == sourceUid);
 							pdNode.Connections.Add(new Connection(source.Value.PinId, connection.Destination));
 						}
+
+						_loadedProject.CommandStack.ApplyCommand(new SetOutputsAndConnectionsCommand(node, outputPins, connections.ToArray()));
 					};
 					NodePropsControl.Content = control;
 					break;

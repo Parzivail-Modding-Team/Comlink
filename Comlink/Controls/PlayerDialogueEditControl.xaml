@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Comlink.Controls"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="300"
              DataContext="{Binding RelativeSource={RelativeSource Self}}">
@@ -29,19 +29,17 @@
                       AutoGenerateColumns="False"
                       CanUserSortColumns="False"
                       CanUserAddRows="False"
-                      materialDesign:DataGridAssist.CellPadding="4 4 2 4"
-                      materialDesign:DataGridAssist.ColumnHeaderPadding="4 4 2 4">
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="None"
+                      SelectionUnit="FullRow"
+                      SelectionMode="Single">
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn
                         Header="Selected"
-                        Binding="{Binding Selected}"
-                        ElementStyle="{StaticResource MaterialDesignDataGridCheckBoxColumnStyle}"
-                        EditingElementStyle="{StaticResource MaterialDesignDataGridCheckBoxColumnEditingStyle}" />
+                        Binding="{Binding Selected}" />
                     <DataGridTextColumn
                         Header="Dialogue"
                         Width="*"
-                        ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}"
-                        EditingElementStyle="{StaticResource MaterialDesignDataGridTextColumnEditingStyle}"
                         Binding="{Binding Value}" />
                 </DataGrid.Columns>
             </DataGrid>
@@ -55,9 +53,15 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" Content="{materialDesign:PackIcon Plus, Size=24}" Margin="3" Command="{x:Static local:PlayerDialogueEditControl.AddCommand}" />
-            <Button Grid.Column="1" Content="{materialDesign:PackIcon DeleteSweep, Size=24}" Margin="3" Command="{x:Static local:PlayerDialogueEditControl.DeleteSelectedCommand}" />
-            <Button Grid.Column="3" Content="{materialDesign:PackIcon Check, Size=24}" Margin="3" Command="{x:Static local:PlayerDialogueEditControl.ApplyCommand}" />
+            <Button Grid.Column="0" Margin="3" Command="{x:Static local:PlayerDialogueEditControl.AddCommand}">
+                <ui:FontIcon Glyph="&#xE710;" />
+            </Button>
+            <Button Grid.Column="1" Margin="3" Command="{x:Static local:PlayerDialogueEditControl.DeleteSelectedCommand}">
+                <ui:FontIcon Glyph="&#xE74D;" />
+            </Button>
+            <Button Grid.Column="3" Margin="3" Style="{DynamicResource AccentButtonStyle}" Command="{x:Static local:PlayerDialogueEditControl.ApplyCommand}">
+                <ui:FontIcon Glyph="&#xE73E;" />
+            </Button>
         </Grid>
     </Grid>
 </UserControl>

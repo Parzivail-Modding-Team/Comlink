@@ -8,13 +8,8 @@
         xmlns:model="clr-namespace:Comlink.Model"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        TextElement.FontWeight="Regular"
-        TextElement.FontSize="13"
-        TextOptions.TextFormattingMode="Ideal"
-        TextOptions.TextRenderingMode="Auto"
-        Background="{DynamicResource MaterialDesignPaper}"
-        FontFamily="{DynamicResource MaterialDesignFont}"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
         DataContext="{Binding RelativeSource={RelativeSource Self}}">
     <Window.CommandBindings>
         <CommandBinding Command="New" CanExecute="AlwaysCanExecute" Executed="NewCommand_Executed" />
@@ -97,7 +92,8 @@
                 Render="Viewport_OnRender" />
         </Grid>
 
-        <Grid Grid.Row="2" Visibility="{Binding OneSelection, Converter={StaticResource BooleanToVisibility}}">
+        <Grid Grid.Row="2"
+              Visibility="{Binding OneSelection, Converter={StaticResource BooleanToVisibility}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>

@@ -16,7 +16,7 @@ namespace Comlink.Controls
 		public static readonly RoutedCommand DeleteSelectedCommand = new();
 		public static readonly RoutedCommand ApplyCommand = new();
 
-		public event EventHandler<Dictionary<UniqueId, string>> ChangedApplied;
+		public event EventHandler<Dictionary<UniqueId, string>> ChangesApplied;
 
 		public ObservableCollection<KeyedSelectableWrapper<string>> DialogueOptions { get; set; }
 
@@ -49,7 +49,7 @@ namespace Comlink.Controls
 
 		protected virtual void OnChangedApplied(Dictionary<UniqueId, string> e)
 		{
-			ChangedApplied?.Invoke(this, e);
+			ChangesApplied?.Invoke(this, e);
 		}
 	}
 }
