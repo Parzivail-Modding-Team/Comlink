@@ -10,6 +10,11 @@
                 <ui:XamlControlsResources />
             </ResourceDictionary.MergedDictionaries>
 
+            <!-- Override theme styles -->
+            <SolidColorBrush x:Key="DataGridColumnHeaderBackgroundBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="DataGridColumnHeaderForegroundBrush" Color="{StaticResource SystemBaseHighColor}" />
+
+            <!-- Converters -->
             <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
         </ResourceDictionary>
     </Application.Resources>

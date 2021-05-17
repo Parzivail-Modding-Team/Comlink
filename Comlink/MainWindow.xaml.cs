@@ -114,7 +114,7 @@ namespace Comlink
 							if (uidToNewPinMap.All(m => m.Key != sourceUid)) continue;
 
 							var source = uidToNewPinMap.FirstOrDefault(m => m.Key == sourceUid);
-							pdNode.Connections.Add(new Connection(source.Value.PinId, connection.Destination));
+							connections.Add(new Connection(source.Value.PinId, connection.Destination));
 						}
 
 						_loadedProject.CommandStack.ApplyCommand(new SetOutputsAndConnectionsCommand(pdNode, outputPins, connections.ToArray()));
@@ -123,12 +123,16 @@ namespace Comlink
 					break;
 				}
 				case NodeType.NpcDialogue:
+					NodePropsControl.Content = null;
 					break;
 				case NodeType.VariableGet:
+					NodePropsControl.Content = null;
 					break;
 				case NodeType.VariableSet:
+					NodePropsControl.Content = null;
 					break;
 				case NodeType.TriggerEvent:
+					NodePropsControl.Content = null;
 					break;
 				default:
 					throw new ArgumentOutOfRangeException();

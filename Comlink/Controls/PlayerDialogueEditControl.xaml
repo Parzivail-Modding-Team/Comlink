@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Comlink.Controls"
              xmlns:ui="http://schemas.modernwpf.com/2019"
+             xmlns:dd="urn:gong-wpf-dragdrop"
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="300"
              DataContext="{Binding RelativeSource={RelativeSource Self}}">
@@ -28,11 +29,14 @@
                       ItemsSource="{Binding DialogueOptions}"
                       AutoGenerateColumns="False"
                       CanUserSortColumns="False"
+                      CanUserReorderColumns="False"
                       CanUserAddRows="False"
                       HeadersVisibility="Column"
                       GridLinesVisibility="None"
                       SelectionUnit="FullRow"
-                      SelectionMode="Single">
+                      SelectionMode="Single"
+                      dd:DragDrop.IsDragSource="True"
+                      dd:DragDrop.IsDropTarget="True">
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn
                         Header="Selected"

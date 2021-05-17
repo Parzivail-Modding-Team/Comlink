@@ -9,7 +9,7 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800"
         xmlns:ui="http://schemas.modernwpf.com/2019"
-        ui:WindowHelper.UseModernWindowStyle="True"
+        ui:WindowHelper.UseModernWindowStyle="False"
         DataContext="{Binding RelativeSource={RelativeSource Self}}">
     <Window.CommandBindings>
         <CommandBinding Command="New" CanExecute="AlwaysCanExecute" Executed="NewCommand_Executed" />
@@ -36,7 +36,8 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Menu>
+        <Menu
+            Background="{StaticResource SystemControlBackgroundChromeMediumLowBrush}">
             <MenuItem Header="_File">
                 <MenuItem Header="_New" Command="New" />
                 <MenuItem Header="_Open" Command="Open" />
@@ -93,6 +94,7 @@
         </Grid>
 
         <Grid Grid.Row="2"
+              Background="{StaticResource SystemControlBackgroundChromeMediumLowBrush}"
               Visibility="{Binding OneSelection, Converter={StaticResource BooleanToVisibility}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />

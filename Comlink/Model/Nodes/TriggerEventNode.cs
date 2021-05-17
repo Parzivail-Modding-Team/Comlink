@@ -7,7 +7,7 @@ namespace Comlink.Model.Nodes
 	{
 		public TriggerEventNode(string eventName) : base(NodeType.TriggerEvent, UniqueId.NewId())
 		{
-			Name = "Set Variable";
+			Name = "Trigger Event";
 			Color = 0xFF_bdb76b;
 
 			InputPins.Add(new FlowInputPin(PinId.NewId(NodeId, PinType.Input, 0)));
