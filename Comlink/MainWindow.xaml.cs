@@ -98,11 +98,9 @@ namespace Comlink
 					var control = new PlayerDialogueEditControl(uidToOldPinMap);
 					control.ChangesApplied += (ctrl, newOptions) =>
 					{
-						var pdNode = _loadedProject.Graph.First(comlinkNode => comlinkNode.NodeId == node.NodeId);
-
 						short index = 0;
 						var uidToNewPinMap = newOptions.Select(pair =>
-							new KeyValuePair<UniqueId, IOutputPin>(pair.Key, new FlowOutputPin(PinId.NewId(pdNode.NodeId, PinType.Output, index++), pair.Value))).ToArray();
+							new KeyValuePair<UniqueId, IOutputPin>(pair.Key, new FlowOutputPin(PinId.NewId(node.NodeId, PinType.Output, index++), pair.Value))).ToArray();
 
 						// remap pin IDs
 						var outputPins = uidToNewPinMap.Select(pair => pair.Value).ToArray();
@@ -117,21 +115,24 @@ namespace Comlink
 							connections.Add(new Connection(source.Value.PinId, connection.Destination));
 						}
 
-						_loadedProject.CommandStack.ApplyCommand(new SetOutputsAndConnectionsCommand(pdNode, outputPins, connections.ToArray()));
+						_loadedProject.CommandStack.ApplyCommand(new SetOutputsAndConnectionsCommand(node, outputPins, connections.ToArray()));
 					};
 					NodePropsControl.Content = control;
 					break;
 				}
 				case NodeType.NpcDialogue:
-					NodePropsControl.Content = null;
-					break;
-				case NodeType.VariableGet:
-					NodePropsControl.Content = null;
-					break;
-				case NodeType.VariableSet:
-					NodePropsControl.Content = null;
-					break;
 				case NodeType.TriggerEvent:
+				{
+					var pin = node.OutputPins[0];
+					var control = new SinglePinEditControl(node.Name, pin.Name);
+
+					control.ChangesApplied += (o, s) => { _loadedProject.CommandStack.ApplyCommand(new SetPinValueCommand(node.NodeId, pin.PinId, pin.Name, s)); };
+
+					NodePropsControl.Content = control;
+					break;
+				}
+				case NodeType.VariableGet:
+				case NodeType.VariableSet:
 					NodePropsControl.Content = null;
 					break;
 				default:

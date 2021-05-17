@@ -41,7 +41,7 @@ namespace Comlink.Render
 					return;
 
 				if (pinB is FlowOutputPin && HasDestination(pinB))
-					return;
+					nodeB.Connections.RemoveAll(connection => connection.Source == pinB.PinId);
 
 				nodeB.Connections.Add(new Connection(pinB.PinId, pinA.PinId));
 			}
@@ -53,7 +53,7 @@ namespace Comlink.Render
 					return;
 
 				if (pinA is FlowOutputPin && HasDestination(pinA))
-					return;
+					nodeA.Connections.RemoveAll(connection => connection.Source == pinA.PinId);
 
 				nodeA.Connections.Add(new Connection(pinA.PinId, pinB.PinId));
 			}

@@ -44,10 +44,10 @@ namespace Comlink.Controls
 
 		private void ApplyCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
-			OnChangedApplied(DialogueOptions.ToDictionary(wrapper => wrapper.Id, wrapper => wrapper.Value));
+			OnChangesApplied(DialogueOptions.ToDictionary(wrapper => wrapper.Id, wrapper => wrapper.Value));
 		}
 
-		protected virtual void OnChangedApplied(Dictionary<UniqueId, string> e)
+		protected virtual void OnChangesApplied(Dictionary<UniqueId, string> e)
 		{
 			ChangesApplied?.Invoke(this, e);
 		}
