@@ -126,18 +126,56 @@ namespace Comlink
 					var pin = node.OutputPins[0];
 					var control = new SinglePinEditControl(node.Name, pin.Name);
 
-					control.ChangesApplied += (o, s) => { _loadedProject.CommandStack.ApplyCommand(new SetPinValueCommand(node.NodeId, pin.PinId, pin.Name, s)); };
+					control.ChangesApplied += (o, s) => _loadedProject.CommandStack.ApplyCommand(new SetPinValueCommand(node.NodeId, pin.PinId, pin.Name, s));
 
 					NodePropsControl.Content = control;
 					break;
 				}
-				case NodeType.VariableGet:
 				case NodeType.VariableSet:
-					NodePropsControl.Content = null;
+				{
+					ShowTypedPinEditor(node, node.OutputPins[1]);
 					break;
+				}
+				case NodeType.VariableGet:
+				case NodeType.ConstantRead:
+				{
+					ShowTypedPinEditor(node, node.OutputPins[0]);
+					break;
+				}
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
+		}
+
+		private void ShowTypedPinEditor(Node node, IPin pin)
+		{
+			if (pin is not ITypedPin typedPin)
+				throw new InvalidOperationException();
+
+			var control = new SingleTypePinEditControl(node.Name, pin.Name, typedPin.Type);
+
+			control.ChangesApplied += (o, s) =>
+			{
+				var newType = s.Key;
+
+				// Check for connections that are now invalid due to a possible type change
+				var invalidConnections = new List<Connection>();
+				foreach (var connection in _loadedProject.Graph.SelectMany(graphNode => graphNode.Connections))
+				{
+					var (_, src) = _loadedProject.Graph.GetPin(connection.Source);
+					var (_, dst) = _loadedProject.Graph.GetPin(connection.Destination);
+
+					if (src.PinId == pin.PinId && ((ITypedPin) dst).Type != newType || dst.PinId == pin.PinId && ((ITypedPin) src).Type != newType)
+						invalidConnections.Add(connection);
+				}
+
+				_loadedProject.CommandStack.ApplyCommand(new DeleteConnectionsCommand(invalidConnections.ToArray()));
+
+				// Set the values
+				_loadedProject.CommandStack.ApplyCommand(new SetPinTypeValueCommand(node.NodeId, pin.PinId, pin.Name, s.Value, typedPin.Type, newType));
+			};
+
+			NodePropsControl.Content = control;
 		}
 
 		private void GraphRendererOnCommandExecuted(object sender, ICommand<Graph> e)
@@ -341,9 +379,35 @@ namespace Comlink
 					break;
 				}
 				case NodeType.VariableGet:
+				{
+					var node = new VariableGetNode("myBoolean", "Z")
+					{
+						X = centerX,
+						Y = centerY
+					};
+					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
 					break;
+				}
 				case NodeType.VariableSet:
+				{
+					var node = new VariableSetNode("myBoolean", "Z")
+					{
+						X = centerX,
+						Y = centerY
+					};
+					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
 					break;
+				}
+				case NodeType.ConstantRead:
+				{
+					var node = new ConstantReadNode("1234", "I")
+					{
+						X = centerX,
+						Y = centerY
+					};
+					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
+					break;
+				}
 				case NodeType.TriggerEvent:
 				{
 					var node = new TriggerEventNode("event")

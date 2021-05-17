@@ -11,7 +11,7 @@ namespace Comlink.Model.Nodes
 			Color = 0xFF_ff8c00;
 
 			InputPins.Add(new FlowInputPin(PinId.NewId(NodeId, PinType.Input, 0)));
-			InputPins.Add(new TypeInputPin(PinId.NewId(NodeId, PinType.Input, 1), "Condition", typeof(bool)));
+			InputPins.Add(new TypeInputPin(PinId.NewId(NodeId, PinType.Input, 1), "Condition", "Z"));
 
 			OutputPins.Add(new FlowOutputPin(PinId.NewId(NodeId, PinType.Output, 0), "True"));
 			OutputPins.Add(new FlowOutputPin(PinId.NewId(NodeId, PinType.Output, 1), "False"));

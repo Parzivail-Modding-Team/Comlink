@@ -70,6 +70,7 @@
                     <Separator />
                     <MenuItem Header="Variable Get" CommandParameter="{x:Static model:NodeType.VariableGet}" Command="{x:Static comlink:MainWindow.CreateNode}" />
                     <MenuItem Header="Variable Set" CommandParameter="{x:Static model:NodeType.VariableSet}" Command="{x:Static comlink:MainWindow.CreateNode}" />
+                    <MenuItem Header="Constant" CommandParameter="{x:Static model:NodeType.ConstantRead}" Command="{x:Static comlink:MainWindow.CreateNode}" />
                     <MenuItem Header="Branch" CommandParameter="{x:Static model:NodeType.Branch}" Command="{x:Static comlink:MainWindow.CreateNode}" />
                     <Separator />
                     <MenuItem Header="Trigger Event" CommandParameter="{x:Static model:NodeType.TriggerEvent}" Command="{x:Static comlink:MainWindow.CreateNode}" />

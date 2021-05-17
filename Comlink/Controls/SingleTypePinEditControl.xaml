@@ -1,0 +1,102 @@
+﻿<UserControl x:Class="Comlink.Controls.SingleTypePinEditControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Comlink.Controls"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             mc:Ignorable="d"
+             d:DesignHeight="300" d:DesignWidth="300"
+             DataContext="{Binding RelativeSource={RelativeSource Self}}">
+    <UserControl.CommandBindings>
+        <CommandBinding Command="{x:Static local:SingleTypePinEditControl.ApplyCommand}" CanExecute="AlwaysCanExecute" Executed="ApplyCommand_Executed" />
+    </UserControl.CommandBindings>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox
+                Margin="5"
+                ui:ControlHelper.Header="Type Signature"
+                ui:ControlHelper.PlaceholderText="Ljni/style/type/signature;"
+                Text="{Binding Type}" />
+
+            <TextBox
+                Grid.Column="1"
+                Margin="5"
+                ui:ControlHelper.Header="{Binding ValueTitle, Mode=OneTime}"
+                ui:ControlHelper.PlaceholderText="{Binding ValueTitle, Mode=OneTime}"
+                Text="{Binding Value}" />
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button
+                Margin="3"
+                Content="Cheatsheet">
+                <ui:FlyoutService.Flyout>
+                    <ui:Flyout>
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="5" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <ui:SimpleStackPanel>
+                                    <TextBlock FontWeight="Bold">Type Signature</TextBlock>
+                                    <TextBlock>Z</TextBlock>
+                                    <TextBlock>B</TextBlock>
+                                    <TextBlock>C</TextBlock>
+                                    <TextBlock>S</TextBlock>
+                                    <TextBlock>I</TextBlock>
+                                    <TextBlock>J</TextBlock>
+                                    <TextBlock>F</TextBlock>
+                                    <TextBlock>D</TextBlock>
+                                    <TextBlock>
+                                        <Run>[</Run><Run FontStyle="Italic">x</Run>
+                                    </TextBlock>
+                                    <TextBlock>Ljava/lang/String;</TextBlock>
+                                </ui:SimpleStackPanel>
+
+                                <ui:SimpleStackPanel Grid.Column="2">
+                                    <TextBlock FontWeight="Bold">Type</TextBlock>
+                                    <TextBlock>boolean</TextBlock>
+                                    <TextBlock>byte</TextBlock>
+                                    <TextBlock>char</TextBlock>
+                                    <TextBlock>short</TextBlock>
+                                    <TextBlock>int</TextBlock>
+                                    <TextBlock>long</TextBlock>
+                                    <TextBlock>float</TextBlock>
+                                    <TextBlock>double</TextBlock>
+                                    <TextBlock>
+                                        <Run FontStyle="Italic">x</Run><Run>[]</Run>
+                                    </TextBlock>
+                                    <TextBlock>java.lang.String</TextBlock>
+                                </ui:SimpleStackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </ui:Flyout>
+                </ui:FlyoutService.Flyout>
+            </Button>
+
+            <Button Grid.Column="2" Margin="3" Style="{DynamicResource AccentButtonStyle}" Command="{x:Static local:SingleTypePinEditControl.ApplyCommand}">
+                <ui:FontIcon Glyph="&#xE73E;" />
+            </Button>
+        </Grid>
+    </Grid>
+</UserControl>

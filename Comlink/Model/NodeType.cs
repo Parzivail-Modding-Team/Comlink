@@ -9,6 +9,7 @@
 		NpcDialogue = NodeCategory.Dialogue | 0x2,
 		VariableGet = NodeCategory.Interop | 0x1,
 		VariableSet = NodeCategory.Interop | 0x2,
-		TriggerEvent = NodeCategory.Interop | 0x3
+		ConstantRead = NodeCategory.Interop | 0x3,
+		TriggerEvent = NodeCategory.Interop | 0x4
 	}
 }

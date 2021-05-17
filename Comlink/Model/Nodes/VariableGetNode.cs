@@ -1,15 +1,14 @@
-﻿using System;
-using Nedry;
+﻿using Nedry;
 using Nedry.Pin;
 
 namespace Comlink.Model.Nodes
 {
 	public class VariableGetNode : ComlinkNode
 	{
-		public VariableGetNode(string variable, Type type) : base(NodeType.VariableGet, UniqueId.NewId())
+		public VariableGetNode(string variable, string type) : base(NodeType.VariableGet, UniqueId.NewId())
 		{
 			Name = "Read Variable";
-			Color = TypeColorConverter.GetColor(type);
+			Color = HashColorConverter.GetColor(type);
 
 			OutputPins.Add(new TypeOutputPin(PinId.NewId(NodeId, PinType.Output, 0), variable, type));
 		}

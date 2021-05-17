@@ -1,10 +1,8 @@
-﻿using System;
-
-namespace Nedry.Pin
+﻿namespace Nedry.Pin
 {
-	public class TypeInputPin : IInputPin
+	public class TypeInputPin : IInputPin, ITypedPin
 	{
-		public Type Type { get; set; }
+		private string _type;
 
 		/// <inheritdoc />
 		public string Name { get; set; }
@@ -15,14 +13,22 @@ namespace Nedry.Pin
 		/// <inheritdoc />
 		public uint Color { get; set; } = 0xFF_00bfff;
 
-		public TypeInputPin(PinId pinId, string name, Type type)
+		/// <inheritdoc />
+		public string Type
+		{
+			get => _type;
+			set
+			{
+				_type = value;
+				Color = HashColorConverter.GetColor(_type);
+			}
+		}
+
+		public TypeInputPin(PinId pinId, string name, string type)
 		{
 			PinId = pinId;
 			Name = name;
 			Type = type;
-
-			// TODO
-			Color = (uint) ((type.GetHashCode() & 0xFFFFFF) | 0xFF000000);
 		}
 
 		/// <inheritdoc />

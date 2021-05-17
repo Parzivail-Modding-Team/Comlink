@@ -14,6 +14,21 @@
             <SolidColorBrush x:Key="DataGridColumnHeaderBackgroundBrush" Color="Transparent" />
             <SolidColorBrush x:Key="DataGridColumnHeaderForegroundBrush" Color="{StaticResource SystemBaseHighColor}" />
 
+            <Style TargetType="Menu" BasedOn="{StaticResource DefaultMenuStyle}">
+                <Setter Property="Height" Value="24" />
+            </Style>
+
+            <Style TargetType="MenuItem" BasedOn="{StaticResource DefaultMenuItemStyle}">
+                <Style.Triggers>
+                    <Trigger Property="Role" Value="TopLevelHeader">
+                        <Setter Property="Height" Value="24" />
+                    </Trigger>
+                    <Trigger Property="Role" Value="TopLevelItem">
+                        <Setter Property="Height" Value="24" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
             <!-- Converters -->
             <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
         </ResourceDictionary>
