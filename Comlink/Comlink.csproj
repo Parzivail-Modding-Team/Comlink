@@ -9,6 +9,7 @@
     <ItemGroup>
         <PackageReference Include="gong-wpf-dragdrop" Version="2.3.2"/>
         <PackageReference Include="ModernWpfUI" Version="0.9.4"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.1"/>
         <PackageReference Include="OpenTK" Version="4.4.0"/>
         <PackageReference Include="OpenTK.GLWpfControl" Version="4.1.0"/>
         <PackageReference Include="SkiaSharp" Version="2.80.3-preview.40"/>

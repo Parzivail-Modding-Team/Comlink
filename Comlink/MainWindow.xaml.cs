@@ -11,6 +11,7 @@ using Comlink.Model;
 using Comlink.Model.Nodes;
 using Comlink.Project;
 using Comlink.Render;
+using ModernWpf.Controls;
 using Nedry;
 using Nedry.Pin;
 using OpenTK.Wpf;
@@ -122,6 +123,7 @@ namespace Comlink
 				}
 				case NodeType.NpcDialogue:
 				case NodeType.TriggerEvent:
+				case NodeType.ConstantRead:
 				{
 					var pin = node.OutputPins[0];
 					var control = new SinglePinEditControl(node.Name, pin.Name);
@@ -132,50 +134,14 @@ namespace Comlink
 					break;
 				}
 				case NodeType.VariableSet:
-				{
-					ShowTypedPinEditor(node, node.OutputPins[1]);
-					break;
-				}
 				case NodeType.VariableGet:
-				case NodeType.ConstantRead:
 				{
-					ShowTypedPinEditor(node, node.OutputPins[0]);
+					NodePropsControl.Content = null;
 					break;
 				}
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
-		}
-
-		private void ShowTypedPinEditor(Node node, IPin pin)
-		{
-			if (pin is not ITypedPin typedPin)
-				throw new InvalidOperationException();
-
-			var control = new SingleTypePinEditControl(node.Name, pin.Name, typedPin.Type);
-
-			control.ChangesApplied += (o, s) =>
-			{
-				var newType = s.Key;
-
-				// Check for connections that are now invalid due to a possible type change
-				var invalidConnections = new List<Connection>();
-				foreach (var connection in _loadedProject.Graph.SelectMany(graphNode => graphNode.Connections))
-				{
-					var (_, src) = _loadedProject.Graph.GetPin(connection.Source);
-					var (_, dst) = _loadedProject.Graph.GetPin(connection.Destination);
-
-					if (src.PinId == pin.PinId && ((ITypedPin) dst).Type != newType || dst.PinId == pin.PinId && ((ITypedPin) src).Type != newType)
-						invalidConnections.Add(connection);
-				}
-
-				_loadedProject.CommandStack.ApplyCommand(new DeleteConnectionsCommand(invalidConnections.ToArray()));
-
-				// Set the values
-				_loadedProject.CommandStack.ApplyCommand(new SetPinTypeValueCommand(node.NodeId, pin.PinId, pin.Name, s.Value, typedPin.Type, newType));
-			};
-
-			NodePropsControl.Content = control;
 		}
 
 		private void GraphRendererOnCommandExecuted(object sender, ICommand<Graph> e)
@@ -242,6 +208,17 @@ namespace Comlink
 
 		private void SaveAsCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			// var sfd = new SaveFileDialog
+			// {
+			// 	Filter = "Comlink Project|*.cmlk"
+			// };
+			//
+			// if (sfd.ShowDialog() ?? false)
+			// {
+			// }
+
+			// var node = _loadedProject.Graph.First();
+			// var j = node.Serialize();
 		}
 
 		private void CloseCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -311,7 +288,7 @@ namespace Comlink
 			_graphRenderer.SelectInverse();
 		}
 
-		private void CreateNodeCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+		private async void CreateNodeCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
 			if (e.Parameter is not NodeType nodeType)
 				return;
@@ -380,32 +357,53 @@ namespace Comlink
 				}
 				case NodeType.VariableGet:
 				{
-					var node = new VariableGetNode("myBoolean", "Z")
+					var dialog = new SingleTypeNodeAddDialog("Variable Get", "", "");
+					var result = await dialog.ShowAsync();
+
+					if (result == ContentDialogResult.Primary)
 					{
-						X = centerX,
-						Y = centerY
-					};
-					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
+						var node = new VariableGetNode(dialog.Value, dialog.Type)
+						{
+							X = centerX,
+							Y = centerY
+						};
+						_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
+					}
+
 					break;
 				}
 				case NodeType.VariableSet:
 				{
-					var node = new VariableSetNode("myBoolean", "Z")
+					var dialog = new SingleTypeNodeAddDialog("Variable Set", "", "");
+					var result = await dialog.ShowAsync();
+
+					if (result == ContentDialogResult.Primary)
 					{
-						X = centerX,
-						Y = centerY
-					};
-					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
+						var node = new VariableSetNode(dialog.Value, dialog.Type)
+						{
+							X = centerX,
+							Y = centerY
+						};
+						_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
+					}
+
 					break;
 				}
 				case NodeType.ConstantRead:
 				{
-					var node = new ConstantReadNode("1234", "I")
+					var dialog = new SingleTypeNodeAddDialog("Constant Read", "", "");
+					var result = await dialog.ShowAsync();
+
+					if (result == ContentDialogResult.Primary)
 					{
-						X = centerX,
-						Y = centerY
-					};
-					_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
+						var node = new ConstantReadNode(dialog.Value, dialog.Type)
+						{
+							X = centerX,
+							Y = centerY
+						};
+						_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
+					}
+
 					break;
 				}
 				case NodeType.TriggerEvent:
