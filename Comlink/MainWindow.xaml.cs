@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Comlink.Command;
 using Comlink.Controls;
@@ -11,6 +12,7 @@ using Comlink.Model;
 using Comlink.Model.Nodes;
 using Comlink.Project;
 using Comlink.Render;
+using Microsoft.Win32;
 using ModernWpf.Controls;
 using Nedry;
 using Nedry.Pin;
@@ -28,7 +30,7 @@ namespace Comlink
 
 		public static readonly RoutedCommand CreateNode = new();
 
-		private readonly GraphRenderer _graphRenderer;
+		private GraphRenderer _graphRenderer;
 
 		private ComlinkProject _loadedProject;
 
@@ -67,9 +69,15 @@ namespace Comlink
 			};
 			Viewport.Start(settings);
 
-			LoadedProject = ComlinkProject.NewEmptyProject();
+			LoadProject(ComlinkProject.NewEmptyProject());
+		}
 
-			_graphRenderer = new GraphRenderer(LoadedProject.Graph, Viewport);
+		private void LoadProject(ComlinkProject project)
+		{
+			LoadedProject = project;
+
+			_graphRenderer?.Dispose();
+			_graphRenderer = new GraphRenderer(project.Graph, Viewport);
 			_graphRenderer.CommandExecuted += GraphRendererOnCommandExecuted;
 			_graphRenderer.SelectionChanged += SelectedNodesChanged;
 		}
@@ -200,6 +208,16 @@ namespace Comlink
 
 		private void OpenCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			// TODO: confirm closing current project
+
+			var ofd = new OpenFileDialog
+			{
+				Filter = "Comlink Project|*.cmlk"
+			};
+
+			if (!(ofd.ShowDialog() ?? false)) return;
+
+			LoadProject(ComlinkProject.Load(ofd.FileName));
 		}
 
 		private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -208,17 +226,14 @@ namespace Comlink
 
 		private void SaveAsCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
-			// var sfd = new SaveFileDialog
-			// {
-			// 	Filter = "Comlink Project|*.cmlk"
-			// };
-			//
-			// if (sfd.ShowDialog() ?? false)
-			// {
-			// }
+			var sfd = new SaveFileDialog
+			{
+				Filter = "Comlink Project|*.cmlk"
+			};
 
-			// var node = _loadedProject.Graph.First();
-			// var j = node.Serialize();
+			if (!(sfd.ShowDialog() ?? false)) return;
+
+			_loadedProject.Save(sfd.FileName);
 		}
 
 		private void CloseCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -429,6 +444,11 @@ namespace Comlink
 		protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
 		{
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+		}
+
+		private void MenuItem_OnClick(object sender, RoutedEventArgs e)
+		{
+			((MenuItem) sender).IsSubmenuOpen = true;
 		}
 	}
 }

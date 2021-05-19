@@ -5,18 +5,6 @@ namespace Comlink.Model.Nodes
 {
 	public class NpcDialogueNode : ComlinkNode
 	{
-		private string _dialogue;
-
-		public string Dialogue
-		{
-			get => _dialogue;
-			set
-			{
-				_dialogue = value;
-				OutputPins[0] = CreateOutputPin(_dialogue);
-			}
-		}
-
 		public NpcDialogueNode() : base(NodeType.NpcDialogue, UniqueId.NewId())
 		{
 			Name = "NPC Dialogue";
@@ -24,12 +12,7 @@ namespace Comlink.Model.Nodes
 
 			InputPins.Add(new FlowInputPin(PinId.NewId(NodeId, PinType.Input, 0)));
 
-			OutputPins.Add(CreateOutputPin(string.Empty));
-		}
-
-		private IOutputPin CreateOutputPin(string text)
-		{
-			return new FlowOutputPin(PinId.NewId(NodeId, PinType.Output, 0), text);
+			OutputPins.Add(new FlowOutputPin(PinId.NewId(NodeId, PinType.Output, 0), string.Empty));
 		}
 	}
 }

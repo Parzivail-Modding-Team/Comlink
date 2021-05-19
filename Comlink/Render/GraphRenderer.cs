@@ -14,13 +14,14 @@ using SkiaSharp;
 
 namespace Comlink.Render
 {
-	public class GraphRenderer
+	public class GraphRenderer : IDisposable
 	{
 		private const SKColorType ColorType = SKColorType.Rgba8888;
 		private const GRSurfaceOrigin SurfaceOrigin = GRSurfaceOrigin.BottomLeft;
 
 		private static SKPaint _baseNodePaint;
 		private static SKPaint _gridPaint;
+		private static SKPaint _originPaint;
 		private static SKPaint _selectionBoxPaint;
 		private static SKPaint _ephemeralConnectionPaint;
 		private static SKPaint _connectionPaint;
@@ -71,6 +72,15 @@ namespace Comlink.Render
 			);
 		}
 
+		/// <inheritdoc />
+		public void Dispose()
+		{
+			_canvas.Dispose();
+			_grContext.Dispose();
+			_renderTarget.Dispose();
+			_surface.Dispose();
+		}
+
 		private static void SetupStyles()
 		{
 			_baseNodePaint = new SKPaint
@@ -87,6 +97,13 @@ namespace Comlink.Render
 				Color = new SKColor(0xFF_EFEFEF),
 				Style = SKPaintStyle.Stroke,
 				StrokeWidth = 1,
+				IsAntialias = true
+			};
+
+			_originPaint = new SKPaint
+			{
+				Color = new SKColor(0xFF_D0D0D0),
+				Style = SKPaintStyle.Fill,
 				IsAntialias = true
 			};
 
@@ -273,7 +290,7 @@ namespace Comlink.Render
 				}
 				else if (pin == null) // Selected a node but not a pin
 				{
-					if (Selection.Count == 1 && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
+					if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift) && !Selection.Contains(node))
 						SelectNone();
 
 					SelectNode(node);
@@ -357,7 +374,7 @@ namespace Comlink.Render
 				if (gridPitch > 1)
 					DrawViewportGrid(gridPitch, originOffset, _gridPaint);
 
-				_canvas.DrawCircle(originOffset, 3, _gridPaint);
+				_canvas.DrawCircle(originOffset, 3, _originPaint);
 
 				_canvas.SetMatrix(_boardTransform);
 
@@ -497,7 +514,7 @@ namespace Comlink.Render
 
 		public void SelectInverse()
 		{
-			_selectedNodesQueue.AddRange(TargetGraph.Where(node => !_selectedNodesQueue.Contains(node)));
+			_selectedNodesQueue.AddRange(TargetGraph.Where(node => !Selection.Contains(node)));
 			SelectNone();
 			CommitSelectionQueue();
 		}

@@ -7,7 +7,7 @@ namespace Comlink.Model.Nodes
 	{
 		public VariableGetNode(string variable, string type) : base(NodeType.VariableGet, UniqueId.NewId())
 		{
-			Name = "Read Variable";
+			Name = $"Get Variable - {type}";
 			Color = HashColorConverter.GetColor(type);
 
 			OutputPins.Add(new TypeOutputPin(PinId.NewId(NodeId, PinType.Output, 0), variable, type));

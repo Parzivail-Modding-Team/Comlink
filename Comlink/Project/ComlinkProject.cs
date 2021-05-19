@@ -1,11 +1,23 @@
 ﻿using System;
+using System.IO;
+using System.Text;
 using Comlink.Command;
+using Comlink.Model;
 using Comlink.Render;
 
 namespace Comlink.Project
 {
 	public class ComlinkProject
 	{
+		[Flags]
+		private enum ProjectFileFlags : byte
+		{
+			HasGraph = 0b1,
+			HasHistory = 0b10
+		}
+
+		private const string FileMagic = "COMLINK";
+
 		public Graph Graph { get; }
 		public CommandStack<Graph> CommandStack { get; }
 
@@ -23,12 +35,40 @@ namespace Comlink.Project
 
 		public static ComlinkProject Load(string filename)
 		{
-			throw new NotImplementedException();
+			using var br = new BinaryReader(File.Open(filename, FileMode.Open));
+
+			var magic = Encoding.ASCII.GetString(br.ReadBytes(FileMagic.Length));
+			if (magic != FileMagic)
+				throw new InvalidDataException();
+
+			var version = br.ReadInt32();
+
+			var flags = (ProjectFileFlags) br.ReadByte();
+
+			var numNodes = br.ReadInt32();
+
+			var graph = new Graph();
+			for (var i = 0; i < numNodes; i++)
+				graph.Add(ComlinkNode.Deserialize(br));
+
+			return new ComlinkProject(graph, new CommandStack<Graph>(graph));
 		}
 
 		public void Save(string filename)
 		{
-			throw new NotImplementedException();
+			using var bw = new BinaryWriter(File.Open(filename, FileMode.Create));
+
+			bw.Write(Encoding.ASCII.GetBytes(FileMagic));
+			bw.Write(1);
+
+			const ProjectFileFlags flags = ProjectFileFlags.HasGraph;
+
+			bw.Write((byte) flags);
+
+			bw.Write(Graph.Count);
+
+			foreach (var node in Graph)
+				node.Serialize(bw);
 		}
 	}
 }

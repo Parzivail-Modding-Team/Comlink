@@ -4,7 +4,7 @@ namespace Nedry
 {
 	public class Connection
 	{
-		public string Name { get; set; }
+		public string Name { get; set; } = string.Empty;
 		public PinId Source { get; set; }
 		public PinId Destination { get; set; }
 

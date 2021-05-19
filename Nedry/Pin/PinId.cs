@@ -64,5 +64,10 @@ namespace Nedry.Pin
 		{
 			return !Equals(left, right);
 		}
+
+		public byte[] GetPinBytes()
+		{
+			return _id;
+		}
 	}
 }

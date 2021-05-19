@@ -7,7 +7,7 @@ namespace Comlink.Model.Nodes
 	{
 		public VariableSetNode(string variable, string type) : base(NodeType.VariableSet, UniqueId.NewId())
 		{
-			Name = "Set Variable";
+			Name = $"Set Variable - {type}";
 			Color = HashColorConverter.GetColor(type);
 
 			InputPins.Add(new FlowInputPin(PinId.NewId(NodeId, PinType.Input, 0)));

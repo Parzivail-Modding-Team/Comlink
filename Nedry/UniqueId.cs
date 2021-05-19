@@ -66,5 +66,10 @@ namespace Nedry
 		{
 			return $"UniqueId<{IdHelper.ToString(_id)}>";
 		}
+
+		public byte[] GetBytes()
+		{
+			return _id;
+		}
 	}
 }

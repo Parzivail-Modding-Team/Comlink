@@ -7,7 +7,7 @@ namespace Comlink.Model.Nodes
 	{
 		public ConstantReadNode(string serializedValue, string type) : base(NodeType.ConstantRead, UniqueId.NewId())
 		{
-			Name = "Constant";
+			Name = $"Constant - {type}";
 			Color = HashColorConverter.GetColor(type);
 
 			OutputPins.Add(new TypeOutputPin(PinId.NewId(NodeId, PinType.Output, 0), serializedValue, type));
