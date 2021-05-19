@@ -70,7 +70,7 @@ namespace Comlink.Render
 			{
 				case PinType.Input:
 				{
-					if (node.InputPins.Count >= pinIdx)
+					if (pinIdx >= node.InputPins.Count)
 						return null;
 
 					pin = node.InputPins[pinIdx];
@@ -78,7 +78,7 @@ namespace Comlink.Render
 				}
 				case PinType.Output:
 				{
-					if (node.OutputPins.Count >= pinIdx)
+					if (pinIdx >= node.OutputPins.Count)
 						return null;
 
 					pin = node.OutputPins[pinIdx];
