@@ -204,6 +204,7 @@ namespace Comlink
 
 		private void NewCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			// TODO
 		}
 
 		private void OpenCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -222,6 +223,7 @@ namespace Comlink
 
 		private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			// TODO
 		}
 
 		private void SaveAsCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -238,6 +240,7 @@ namespace Comlink
 
 		private void CloseCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			// TODO
 		}
 
 		private void UndoCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -262,14 +265,17 @@ namespace Comlink
 
 		private void CutCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			// TODO
 		}
 
 		private void CopyCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			// TODO
 		}
 
 		private void PasteCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
+			// TODO
 		}
 
 		private void DeleteCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -286,6 +292,9 @@ namespace Comlink
 			}
 
 			_loadedProject.CommandStack.ApplyCommand(new DeleteNodesCommand(_graphRenderer.Selection.ToArray()));
+
+			_graphRenderer.Selection.Clear();
+			NodePropsControl.Content = null;
 		}
 
 		private void SelectAllCommand_Executed(object sender, ExecutedRoutedEventArgs e)

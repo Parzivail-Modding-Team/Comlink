@@ -194,7 +194,7 @@ namespace Comlink.Render
 
 		private ComlinkNode GetHotNode()
 		{
-			return TargetGraph.FirstOrDefault(node => _nodeRenderer.GetBounds(node).Contains(new Vector2(_lastMouseBoardPos.X, _lastMouseBoardPos.Y)));
+			return TargetGraph.LastOrDefault(node => _nodeRenderer.GetBounds(node).Contains(new Vector2(_lastMouseBoardPos.X, _lastMouseBoardPos.Y)));
 		}
 
 		private bool IsSelected(ComlinkNode node)
