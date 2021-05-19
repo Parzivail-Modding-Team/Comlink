@@ -69,5 +69,15 @@ namespace Nedry.Pin
 		{
 			return _id;
 		}
+
+		public PinType GetSide()
+		{
+			return (PinType) _id[0];
+		}
+
+		public short GetIndex()
+		{
+			return (short) ((_id[1] << 8) | _id[2]);
+		}
 	}
 }

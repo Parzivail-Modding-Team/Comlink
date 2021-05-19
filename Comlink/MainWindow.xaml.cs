@@ -30,7 +30,7 @@ namespace Comlink
 
 		public static readonly RoutedCommand CreateNode = new();
 
-		private GraphRenderer _graphRenderer;
+		private readonly GraphRenderer _graphRenderer;
 
 		private ComlinkProject _loadedProject;
 
@@ -69,15 +69,8 @@ namespace Comlink
 			};
 			Viewport.Start(settings);
 
-			LoadProject(ComlinkProject.NewEmptyProject());
-		}
-
-		private void LoadProject(ComlinkProject project)
-		{
-			LoadedProject = project;
-
-			_graphRenderer?.Dispose();
-			_graphRenderer = new GraphRenderer(project.Graph, Viewport);
+			LoadedProject = ComlinkProject.NewEmptyProject();
+			_graphRenderer = new GraphRenderer(LoadedProject.Graph, Viewport);
 			_graphRenderer.CommandExecuted += GraphRendererOnCommandExecuted;
 			_graphRenderer.SelectionChanged += SelectedNodesChanged;
 		}
@@ -218,7 +211,7 @@ namespace Comlink
 
 			if (!(ofd.ShowDialog() ?? false)) return;
 
-			LoadProject(ComlinkProject.Load(ofd.FileName));
+			LoadedProject = ComlinkProject.Load(ofd.FileName);
 		}
 
 		private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)

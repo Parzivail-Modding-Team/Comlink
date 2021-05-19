@@ -19,12 +19,6 @@ namespace Comlink.Render
 			return this.SelectMany(node => node.Connections).Any(connection => connection.Source == pin.PinId);
 		}
 
-		public void RemoveAllConnections(IPin pin)
-		{
-			foreach (var node in this)
-				node.Connections.RemoveAll(connection => connection.Source == pin.PinId || connection.Destination == pin.PinId);
-		}
-
 		public void CreateConnection(PinId idA, PinId idB)
 		{
 			var (nodeA, pinA) = GetPin(idA);
@@ -69,9 +63,32 @@ namespace Comlink.Render
 			if (node == null)
 				return null;
 
-			var pin = (IPin) node.InputPins.FirstOrDefault(inputPin => inputPin.PinId == pinId) ?? node.OutputPins.FirstOrDefault(outputPin => outputPin.PinId == pinId);
+			var pinIdx = pinId.GetIndex();
+			IPin pin;
 
-			return pin == null ? null : new PinReference(node, pin);
+			switch (pinId.GetSide())
+			{
+				case PinType.Input:
+				{
+					if (node.InputPins.Count >= pinIdx)
+						return null;
+
+					pin = node.InputPins[pinIdx];
+					break;
+				}
+				case PinType.Output:
+				{
+					if (node.OutputPins.Count >= pinIdx)
+						return null;
+
+					pin = node.OutputPins[pinIdx];
+					break;
+				}
+				default:
+					throw new ArgumentOutOfRangeException();
+			}
+
+			return new PinReference(node, pin);
 		}
 
 		public void RemoveConnection(PinId idA, PinId idB)
