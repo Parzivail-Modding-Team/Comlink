@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Comlink", "Comlink\Comlink.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nedry", "Nedry\Nedry.csproj", "{3C23DE31-216B-4C55-B919-9CF77241BC47}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComlinkGtk", "ComlinkGtk\ComlinkGtk.csproj", "{CCF0251C-664F-418D-9D77-F86FC8A87276}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{3C23DE31-216B-4C55-B919-9CF77241BC47}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C23DE31-216B-4C55-B919-9CF77241BC47}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C23DE31-216B-4C55-B919-9CF77241BC47}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CCF0251C-664F-418D-9D77-F86FC8A87276}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CCF0251C-664F-418D-9D77-F86FC8A87276}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CCF0251C-664F-418D-9D77-F86FC8A87276}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CCF0251C-664F-418D-9D77-F86FC8A87276}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
