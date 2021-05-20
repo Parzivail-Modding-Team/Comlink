@@ -1,4 +1,5 @@
-﻿using Comlink.Render;
+﻿using Comlink.Model;
+using Comlink.Render;
 using Nedry;
 using Nedry.Pin;
 
@@ -22,13 +23,21 @@ namespace Comlink.Command
 		/// <inheritdoc />
 		public void Apply(Graph source)
 		{
-			source.GetPin(_pin).Pin.Name = _newValue;
+			var (node, pin) = source.GetPin(_pin);
+			pin.Name = _newValue;
+
+			if (node is ComlinkNode cn)
+				cn.MarkWidthDirty();
 		}
 
 		/// <inheritdoc />
 		public void Revert(Graph source)
 		{
-			source.GetPin(_pin).Pin.Name = _oldValue;
+			var (node, pin) = source.GetPin(_pin);
+			pin.Name = _oldValue;
+
+			if (node is ComlinkNode cn)
+				cn.MarkWidthDirty();
 		}
 	}
 }

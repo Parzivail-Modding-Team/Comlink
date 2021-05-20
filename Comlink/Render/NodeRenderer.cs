@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Comlink.Extensions;
 using Comlink.Model;
 using Nedry;
@@ -29,7 +30,27 @@ namespace Comlink.Render
 
 		private float GetNodeWidth(Node node, SKPaint headerTextPaint, SKPaint textPaint)
 		{
-			return 200;
+			if (node is not ComlinkNode cn)
+				return 200;
+
+			// Check if we've cached the width
+			if (cn.Width != -1)
+				return cn.Width;
+
+			var header = node.Name;
+			var longestInput = node.InputPins.Select(pin => pin.Name).OrderByDescending(s => s.Length).FirstOrDefault();
+			var longestOutput = node.OutputPins.Select(pin => pin.Name).OrderByDescending(s => s.Length).FirstOrDefault();
+
+			var headerWidth = headerTextPaint.MeasureText(header);
+			var longInputWidth = headerTextPaint.MeasureText(longestInput);
+			var longOutputWidth = headerTextPaint.MeasureText(longestOutput);
+
+			var headerLineHeight = (int) (headerTextPaint.FontMetrics.Descent - headerTextPaint.FontMetrics.Ascent + headerTextPaint.FontMetrics.Leading);
+			var lineHeight = (int) (textPaint.FontMetrics.Descent - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Leading);
+
+			cn.Width = (int) Math.Max(headerWidth + headerLineHeight + NodeBorderSize, longInputWidth + longOutputWidth + 2 * lineHeight);
+
+			return cn.Width;
 		}
 
 		public Box2 GetBounds(Node node)

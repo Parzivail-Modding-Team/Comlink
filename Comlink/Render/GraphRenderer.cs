@@ -528,5 +528,10 @@ namespace Comlink.Render
 		{
 			SelectionChanged?.Invoke(this, EventArgs.Empty);
 		}
+
+		public Vector2 GetViewportCenter()
+		{
+			return ControlToBoardCoords((float) (_control.ActualWidth / 2), (float) (_control.ActualHeight / 2));
+		}
 	}
 }

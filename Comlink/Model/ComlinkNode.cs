@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using Comlink.Extensions;
 using Nedry;
@@ -11,10 +12,17 @@ namespace Comlink.Model
 	{
 		public NodeType NodeType { get; }
 
+		public int Width { get; set; }
+
 		/// <inheritdoc />
 		public ComlinkNode(NodeType type, UniqueId nodeId) : base(nodeId)
 		{
 			NodeType = type;
+
+			InputPins.CollectionChanged += MarkWidthDirty;
+			OutputPins.CollectionChanged += MarkWidthDirty;
+
+			MarkWidthDirty();
 		}
 
 		public ComlinkNode(NodeType nodeType, UniqueId id, float x, float y, uint color, string name, IEnumerable<IInputPin> inputPins, IEnumerable<IOutputPin> outputPins,
@@ -28,6 +36,16 @@ namespace Comlink.Model
 			InputPins.AddRange(inputPins);
 			OutputPins.AddRange(outputPins);
 			Connections.AddRange(connections);
+		}
+
+		private void MarkWidthDirty(object sender, NotifyCollectionChangedEventArgs e)
+		{
+			MarkWidthDirty();
+		}
+
+		public void MarkWidthDirty()
+		{
+			Width = -1;
 		}
 
 		public void Serialize(BinaryWriter stream)

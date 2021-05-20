@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -12,6 +13,7 @@ using Comlink.Model;
 using Comlink.Model.Nodes;
 using Comlink.Project;
 using Comlink.Render;
+using Comlink.Util;
 using Microsoft.Win32;
 using ModernWpf.Controls;
 using Nedry;
@@ -258,17 +260,77 @@ namespace Comlink
 
 		private void CutCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
-			// TODO
+			CopyCommand_Executed(sender, e);
+			DeleteCommand_Executed(sender, e);
 		}
 
 		private void CopyCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
-			// TODO
+			using var ms = new MemoryStream();
+
+			var selectedNodes = _graphRenderer.Selection.Where(node => node.NodeType != NodeType.Interact).ToArray();
+
+			var bw = new BinaryWriter(ms);
+			bw.Write(selectedNodes.Length);
+			foreach (var node in selectedNodes)
+				node.Serialize(bw);
+
+			ClipboardHelper.PutBytesOnClipboard("comlink-nodes", ms);
 		}
 
 		private void PasteCommand_Executed(object sender, ExecutedRoutedEventArgs e)
 		{
-			// TODO
+			using var nodeStream = ClipboardHelper.GetBytesFromClipboard("comlink-nodes");
+
+			var br = new BinaryReader(nodeStream);
+			var numNodes = br.ReadInt32();
+
+			var nodes = new List<ComlinkNode>();
+			for (var i = 0; i < numNodes; i++)
+				nodes.Add(ComlinkNode.Deserialize(br));
+
+			var nodeIdMap = new Dictionary<UniqueId, UniqueId>();
+
+			// give each node a new ID
+			foreach (var node in nodes)
+			{
+				var newId = UniqueId.NewId();
+				nodeIdMap[node.NodeId] = newId;
+
+				node.NodeId = newId;
+			}
+
+			// remap the pin IDs and connections to the new IDs,
+			// or remove them if the referenced node wasn't copied
+
+			var averageX = nodes.Average(node => node.X);
+			var averageY = nodes.Average(node => node.Y);
+
+			var newAverage = _graphRenderer.GetViewportCenter();
+
+			foreach (var node in nodes)
+			{
+				node.Connections.RemoveAll(connection => !(nodeIdMap.ContainsKey(connection.Source.Node) && nodeIdMap.ContainsKey(connection.Destination.Node)));
+				foreach (var connection in node.Connections)
+				{
+					connection.Source = new PinId(nodeIdMap[connection.Source.Node], connection.Source.GetPinBytes());
+					connection.Destination = new PinId(nodeIdMap[connection.Destination.Node], connection.Destination.GetPinBytes());
+				}
+
+				foreach (var pin in node.InputPins)
+					pin.PinId = new PinId(node.NodeId, pin.PinId.GetPinBytes());
+
+				foreach (var pin in node.OutputPins)
+					pin.PinId = new PinId(node.NodeId, pin.PinId.GetPinBytes());
+
+				var offsetFromAverageX = node.X - averageX;
+				var offsetFromAverageY = node.Y - averageY;
+
+				node.X = offsetFromAverageX + newAverage.X;
+				node.Y = offsetFromAverageY + newAverage.Y;
+
+				_loadedProject.CommandStack.ApplyCommand(new CreateNodeCommand(node));
+			}
 		}
 
 		private void DeleteCommand_Executed(object sender, ExecutedRoutedEventArgs e)

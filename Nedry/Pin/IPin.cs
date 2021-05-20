@@ -2,7 +2,7 @@
 {
 	public interface IPin
 	{
-		PinId PinId { get; init; }
+		PinId PinId { get; set; }
 		string Name { get; set; }
 		uint Color { get; set; }
 		bool CanConnectTo(IPin other);

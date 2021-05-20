@@ -6,7 +6,7 @@
 		public string Name { get; set; } = string.Empty;
 
 		/// <inheritdoc />
-		public PinId PinId { get; init; }
+		public PinId PinId { get; set; }
 
 		/// <inheritdoc />
 		public uint Color { get; set; } = 0xFF_FFFFFF;
