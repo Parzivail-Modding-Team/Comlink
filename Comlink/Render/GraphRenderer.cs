@@ -2,15 +2,14 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Windows;
-using System.Windows.Input;
 using Comlink.Command;
 using Comlink.Model;
 using Nedry.Pin;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
-using OpenTK.Wpf;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using SkiaSharp;
+using ErrorCode = OpenTK.Graphics.OpenGL.ErrorCode;
 
 namespace Comlink.Render
 {
@@ -27,7 +26,7 @@ namespace Comlink.Render
 		private static SKPaint _connectionPaint;
 		private static SKPaint _deleteConnectionPaint;
 
-		private readonly GLWpfControl _control;
+		private readonly IViewport _control;
 		private readonly NodeRenderer _nodeRenderer;
 
 		private readonly List<ComlinkNode> _selectedNodesQueue = new();
@@ -51,14 +50,14 @@ namespace Comlink.Render
 		public event EventHandler<ICommand<Graph>> CommandExecuted;
 		public event EventHandler<EventArgs> SelectionChanged;
 
-		private static bool IsDeleteConnectionKeyDown => Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
-
 		public Graph TargetGraph { get; set; }
 
 		public bool HasSelection => Selection.Count > 0;
 		public List<ComlinkNode> Selection { get; } = new();
 
-		public GraphRenderer(Graph graph, GLWpfControl control)
+		private bool IsShiftKeyDown => _control.IsKeyDown(Keys.LeftShift) || _control.IsKeyDown(Keys.RightShift);
+
+		public GraphRenderer(Graph graph, IViewport control)
 		{
 			TargetGraph = graph;
 			_control = control;
@@ -143,29 +142,20 @@ namespace Comlink.Render
 			};
 		}
 
-		private Vector2 GetMousePositionOnBoard(MouseEventArgs e)
+		public Vector2 ControlToBoardCoords(Vector2 pos)
 		{
-			var pos = e.GetPosition(_control);
-			return ControlToBoardCoords((float) pos.X, (float) pos.Y);
-		}
-
-		public Vector2 ControlToBoardCoords(float x, float y)
-		{
-			var transformedPoint = _boardTransform.Invert().MapPoint(x, y);
+			var transformedPoint = _boardTransform.Invert().MapPoint(pos.X, pos.Y);
 			return new Vector2(transformedPoint.X, transformedPoint.Y);
 		}
 
-		public void OnMouseMove(MouseEventArgs e)
+		public void OnMouseMove(Vector2 posOnControl, bool leftMouse, bool rightMouse)
 		{
-			var controlPos = e.GetPosition(_control);
-			var posOnControl = new Vector2((float) controlPos.X, (float) controlPos.Y);
-
 			var delta = posOnControl - _lastMouseControlPos;
 			var (dX, dY) = delta / _boardTransform.MapRadius(1);
 
 			_lastMouseControlPos = posOnControl;
 
-			var posOnBoard = GetMousePositionOnBoard(e);
+			var posOnBoard = ControlToBoardCoords(posOnControl);
 			var node = GetHotNode();
 
 			_lastMouseBoardPos = posOnBoard;
@@ -176,7 +166,7 @@ namespace Comlink.Render
 			}
 			else
 			{
-				if (e.LeftButton == MouseButtonState.Pressed)
+				if (leftMouse)
 				{
 					if (node != null)
 						foreach (var selectedNode in Selection)
@@ -185,7 +175,7 @@ namespace Comlink.Render
 							selectedNode.Y += dY;
 						}
 				}
-				else if (e.RightButton == MouseButtonState.Pressed)
+				else if (rightMouse)
 				{
 					_boardTransform = _boardTransform.PostConcat(SKMatrix.CreateTranslation(delta.X, delta.Y));
 				}
@@ -220,25 +210,28 @@ namespace Comlink.Render
 					_selectedNodesQueue.Add(node);
 		}
 
-		public void OnMouseUp(MouseButtonEventArgs e)
+		public void OnMouseUp(MouseButton button, Vector2 posOnControl)
 		{
-			_rectangleSelecting = false;
-			CommitSelectionQueue();
-
-			if (_dragSourcePin != null)
+			if (button == MouseButton.Left)
 			{
-				var node = GetHotNode();
+				_rectangleSelecting = false;
+				CommitSelectionQueue();
 
-				if (node != null)
+				if (_dragSourcePin != null)
 				{
-					var pin = _nodeRenderer.GetPin(node, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
+					var node = GetHotNode();
 
-					if (pin != null && node.NodeId != _dragSourcePin.Node.NodeId)
-						OnCommandExecuted(new CreateConnectionCommand(_dragSourcePin.Pin.PinId, pin.PinId));
+					if (node != null)
+					{
+						var pin = _nodeRenderer.GetPin(node, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
+
+						if (pin != null && node.NodeId != _dragSourcePin.Node.NodeId)
+							OnCommandExecuted(new CreateConnectionCommand(_dragSourcePin.Pin.PinId, pin.PinId));
+					}
 				}
-			}
 
-			_dragSourcePin = null;
+				_dragSourcePin = null;
+			}
 		}
 
 		private void CommitSelectionQueue()
@@ -249,11 +242,11 @@ namespace Comlink.Render
 			OnSelectionChanged();
 		}
 
-		public void OnMouseDown(MouseButtonEventArgs e)
+		public void OnMouseDown(MouseButton button, Vector2 posOnControl)
 		{
-			_mouseDownPos = _lastMouseBoardPos = GetMousePositionOnBoard(e);
+			_mouseDownPos = _lastMouseBoardPos = ControlToBoardCoords(posOnControl);
 
-			if (e.ChangedButton == MouseButton.Left)
+			if (button == MouseButton.Left)
 			{
 				var node = GetHotNode();
 				IPin pin = null;
@@ -264,7 +257,7 @@ namespace Comlink.Render
 
 					if (pin != null)
 					{
-						if (IsDeleteConnectionKeyDown)
+						if (IsShiftKeyDown)
 						{
 							var connections = TargetGraph
 								.SelectMany(n => n
@@ -283,14 +276,14 @@ namespace Comlink.Render
 
 				if (node == null) // Selected empty space
 				{
-					if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
+					if (!IsShiftKeyDown)
 						SelectNone();
 
 					_rectangleSelecting = true;
 				}
 				else if (pin == null) // Selected a node but not a pin
 				{
-					if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift) && !Selection.Contains(node))
+					if (!IsShiftKeyDown && !Selection.Contains(node))
 						SelectNone();
 
 					SelectNode(node);
@@ -302,22 +295,18 @@ namespace Comlink.Render
 			}
 		}
 
-		public void OnMouseWheel(MouseWheelEventArgs e)
+		public void OnMouseWheel(float delta, Vector2 posOnControl)
 		{
-			var factor = e.Delta > 0 ? 2 : 0.5f;
+			var factor = delta > 0 ? 2 : 0.5f;
 
-			var (x, y) = GetMousePositionOnBoard(e);
+			var (x, y) = ControlToBoardCoords(posOnControl);
 			_boardTransform = _boardTransform.PreConcat(SKMatrix.CreateScale(factor, factor, x, y));
 		}
 
-		public void OnSizeChanged(SizeChangedEventArgs e)
+		public void OnRender()
 		{
-		}
-
-		public void OnRender(TimeSpan dt)
-		{
-			var width = Math.Max(_control.FrameBufferWidth, 1);
-			var height = Math.Max(_control.FrameBufferHeight, 1);
+			var width = Math.Max(_control.Width, 1);
+			var height = Math.Max(_control.Height, 1);
 
 			// get the new surface size
 			_size = new SKSizeI(width, height);
@@ -437,7 +426,7 @@ namespace Comlink.Render
 					if (outputPos == null || inputPos == null)
 						throw new InvalidOperationException();
 
-					if (hotPin != null && (inputPin.Pin.PinId == hotPin.PinId || outputPin.Pin.PinId == hotPin.PinId) && IsDeleteConnectionKeyDown)
+					if (hotPin != null && (inputPin.Pin.PinId == hotPin.PinId || outputPin.Pin.PinId == hotPin.PinId) && IsShiftKeyDown)
 						DrawConnection(outputPos.Value, inputPos.Value, deleteConnectionPaint);
 					else
 						DrawConnection(outputPos.Value, inputPos.Value, connectionPaint);
@@ -531,7 +520,7 @@ namespace Comlink.Render
 
 		public Vector2 GetViewportCenter()
 		{
-			return ControlToBoardCoords((float) (_control.ActualWidth / 2), (float) (_control.ActualHeight / 2));
+			return ControlToBoardCoords(new Vector2(_control.Width / 2f, _control.Height / 2f));
 		}
 	}
 }

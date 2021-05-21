@@ -17,4 +17,9 @@
         <PackageReference Include="OpenTK" Version="4.6.3"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Comlink\Comlink.csproj"/>
+        <ProjectReference Include="..\Nedry\Nedry.csproj"/>
+    </ItemGroup>
+
 </Project>
