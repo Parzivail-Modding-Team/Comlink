@@ -9,7 +9,7 @@ namespace Comlink.Extensions
 
 		public static void DrawRoundedTriangle(this SKCanvas ctx, float x, float y, float l, float r, SKPaint paint)
 		{
-			var path = new SKPath();
+			using var path = new SKPath();
 
 			var d = r / Sqrt2;
 

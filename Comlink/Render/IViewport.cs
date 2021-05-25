@@ -9,6 +9,8 @@ namespace Comlink.Render
 		public int Width { get; }
 		public int Height { get; }
 
+		public Graph Graph { get; }
+
 		public bool IsKeyDown(Keys key);
 	}
 }

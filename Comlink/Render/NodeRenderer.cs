@@ -58,8 +58,8 @@ namespace Comlink.Render
 			var x = node.X;
 			var y = node.Y;
 
-			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
-			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
+			using var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
+			using var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
 
 			var headerLineHeight = (int) (headerTextPaint.FontMetrics.Descent - headerTextPaint.FontMetrics.Ascent + headerTextPaint.FontMetrics.Leading);
 
@@ -81,8 +81,8 @@ namespace Comlink.Render
 			var x = node.X;
 			var y = node.Y;
 
-			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
-			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
+			using var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
+			using var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
 
 			var lineHeight = (int) (textPaint.FontMetrics.Descent - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Leading);
 
@@ -120,8 +120,8 @@ namespace Comlink.Render
 			var x = node.X;
 			var y = node.Y;
 
-			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
-			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
+			using var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
+			using var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
 
 			var lineHeight = (int) (textPaint.FontMetrics.Descent - textPaint.FontMetrics.Ascent + textPaint.FontMetrics.Leading);
 
@@ -156,8 +156,8 @@ namespace Comlink.Render
 
 		public void DrawNode(SKCanvas ctx, ComlinkNode node, bool selected)
 		{
-			var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
-			var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
+			using var headerTextPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_headerTypeface);
+			using var textPaint = _paint.Clone().WithColor(0xFF_FFFFFF).WithTypeface(_nodeTypeface);
 
 			var headerLineHeight = (int) (headerTextPaint.FontMetrics.Descent - headerTextPaint.FontMetrics.Ascent + headerTextPaint.FontMetrics.Leading);
 			var headerBaselineOffset = (int) -headerTextPaint.FontMetrics.Ascent;
@@ -180,11 +180,12 @@ namespace Comlink.Render
 			{
 				var selectionStrokeSize = NodeBorderSize / 2f;
 
-				var paint = _paint.Clone();
+				using var paint = _paint.Clone();
+				using var path = SKPathEffect.CreateDash(SelectionStrokeInterval, (float) ((DateTime.Now - DateTime.Today).TotalSeconds * 10 % 20));
 				paint.IsStroke = true;
 				paint.Color = new SKColor(SelectionBorderColor);
 				paint.StrokeWidth = selectionStrokeSize;
-				paint.PathEffect = SKPathEffect.CreateDash(SelectionStrokeInterval, (float) ((DateTime.Now - DateTime.Today).TotalSeconds * 10 % 20));
+				paint.PathEffect = path;
 
 				ctx.DrawRoundRect(headerX - selectionStrokeSize, headerY - selectionStrokeSize, headerWidth + 2 * selectionStrokeSize, headerHeight + 2 * selectionStrokeSize,
 					NodeCornerRadius + selectionStrokeSize, NodeCornerRadius + selectionStrokeSize, paint);

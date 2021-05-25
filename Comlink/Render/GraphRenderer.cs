@@ -50,16 +50,13 @@ namespace Comlink.Render
 		public event EventHandler<ICommand<Graph>> CommandExecuted;
 		public event EventHandler<EventArgs> SelectionChanged;
 
-		public Graph TargetGraph { get; set; }
-
 		public bool HasSelection => Selection.Count > 0;
 		public List<ComlinkNode> Selection { get; } = new();
 
 		private bool IsShiftKeyDown => _control.IsKeyDown(Keys.LeftShift) || _control.IsKeyDown(Keys.RightShift);
 
-		public GraphRenderer(Graph graph, IViewport control)
+		public GraphRenderer(IViewport control)
 		{
-			TargetGraph = graph;
 			_control = control;
 
 			SetupStyles();
@@ -184,7 +181,7 @@ namespace Comlink.Render
 
 		private ComlinkNode GetHotNode()
 		{
-			return TargetGraph.LastOrDefault(node => _nodeRenderer.GetBounds(node).Contains(new Vector2(_lastMouseBoardPos.X, _lastMouseBoardPos.Y)));
+			return _control.Graph.LastOrDefault(node => _nodeRenderer.GetBounds(node).Contains(new Vector2(_lastMouseBoardPos.X, _lastMouseBoardPos.Y)));
 		}
 
 		private bool IsSelected(ComlinkNode node)
@@ -205,7 +202,7 @@ namespace Comlink.Render
 			var selectionRect = new Box2(_mouseDownPos.X, _mouseDownPos.Y, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
 
 			_selectedNodesQueue.Clear();
-			foreach (var node in TargetGraph.Where(node => !Selection.Contains(node)))
+			foreach (var node in _control.Graph.Where(node => !Selection.Contains(node)))
 				if (_nodeRenderer.GetBounds(node).Contains(selectionRect))
 					_selectedNodesQueue.Add(node);
 		}
@@ -259,7 +256,7 @@ namespace Comlink.Render
 					{
 						if (IsShiftKeyDown)
 						{
-							var connections = TargetGraph
+							var connections = _control.Graph
 								.SelectMany(n => n
 									.Connections
 									.Where(connection => connection.Source == pin.PinId || connection.Destination == pin.PinId)
@@ -391,12 +388,12 @@ namespace Comlink.Render
 
 		private void DrawNodes()
 		{
-			foreach (var node in TargetGraph) _nodeRenderer.DrawNode(_canvas, node, IsSelected(node));
+			foreach (var node in _control.Graph) _nodeRenderer.DrawNode(_canvas, node, IsSelected(node));
 		}
 
 		private void DrawConnection(Vector2 start, Vector2 end, SKPaint paint)
 		{
-			var path = new SKPath();
+			using var path = new SKPath();
 
 			path.MoveTo(start.X, start.Y);
 
@@ -410,12 +407,12 @@ namespace Comlink.Render
 
 		private void DrawConnections(IPin hotPin, SKPaint ephemeralConnectionPaint, SKPaint connectionPaint, SKPaint deleteConnectionPaint)
 		{
-			foreach (var node in TargetGraph)
+			foreach (var node in _control.Graph)
 			{
 				foreach (var connection in node.Connections)
 				{
-					var outputPin = TargetGraph.GetPin(connection.Source);
-					var inputPin = TargetGraph.GetPin(connection.Destination);
+					var outputPin = _control.Graph.GetPin(connection.Source);
+					var inputPin = _control.Graph.GetPin(connection.Destination);
 
 					if (outputPin == null || inputPin == null)
 						throw new InvalidOperationException();
@@ -439,27 +436,22 @@ namespace Comlink.Render
 				if (!posNullable.HasValue)
 					throw new InvalidOperationException();
 
-				var node = GetHotNode();
-
 				var paint = ephemeralConnectionPaint;
 
 				var start = posNullable.Value;
 				var end = _lastMouseBoardPos;
 
-				if (node != null)
+				if (hotPin != null && _dragSourcePin.Pin.CanConnectTo(hotPin) && hotPin.PinId.Node != _dragSourcePin.Node.NodeId)
 				{
-					var pin = _nodeRenderer.GetPin(node, _lastMouseBoardPos.X, _lastMouseBoardPos.Y);
+					paint = connectionPaint;
 
-					if (pin != null && _dragSourcePin.Pin.CanConnectTo(pin) && node.NodeId != _dragSourcePin.Node.NodeId)
-					{
-						paint = connectionPaint;
+					var hotPinNode = _control.Graph.First(node => node.NodeId == hotPin.PinId.Node);
 
-						var pinPos = _nodeRenderer.GetPinPos(node, pin);
-						if (!pinPos.HasValue)
-							throw new InvalidOperationException();
+					var pinPos = _nodeRenderer.GetPinPos(hotPinNode, hotPin);
+					if (!pinPos.HasValue)
+						throw new InvalidOperationException();
 
-						end = pinPos.Value;
-					}
+					end = pinPos.Value;
 				}
 
 				if (_dragSourcePin.Pin is IInputPin)
@@ -490,7 +482,7 @@ namespace Comlink.Render
 
 		public void SelectAll()
 		{
-			_selectedNodesQueue.AddRange(TargetGraph);
+			_selectedNodesQueue.AddRange(_control.Graph);
 			CommitSelectionQueue();
 		}
 
@@ -503,7 +495,7 @@ namespace Comlink.Render
 
 		public void SelectInverse()
 		{
-			_selectedNodesQueue.AddRange(TargetGraph.Where(node => !Selection.Contains(node)));
+			_selectedNodesQueue.AddRange(_control.Graph.Where(node => !Selection.Contains(node)));
 			SelectNone();
 			CommitSelectionQueue();
 		}
@@ -521,6 +513,11 @@ namespace Comlink.Render
 		public Vector2 GetViewportCenter()
 		{
 			return ControlToBoardCoords(new Vector2(_control.Width / 2f, _control.Height / 2f));
+		}
+
+		public void ResetTransform()
+		{
+			_boardTransform = SKMatrix.CreateIdentity();
 		}
 	}
 }
