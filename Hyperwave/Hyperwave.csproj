@@ -10,4 +10,8 @@
         <PackageReference Include="SkiaSharp" Version="2.80.3-preview.90"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\SimpleUndoRedo\SimpleUndoRedo.csproj"/>
+    </ItemGroup>
+
 </Project>

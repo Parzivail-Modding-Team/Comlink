@@ -1,5 +1,6 @@
 ﻿using Comlink.Render;
 using Nedry.Pin;
+using SimpleUndoRedo;
 
 namespace Comlink.Command
 {

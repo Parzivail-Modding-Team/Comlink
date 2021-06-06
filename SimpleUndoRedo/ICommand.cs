@@ -1,4 +1,4 @@
-﻿namespace Comlink.Command
+﻿namespace SimpleUndoRedo
 {
 	public interface ICommand<in T>
 	{

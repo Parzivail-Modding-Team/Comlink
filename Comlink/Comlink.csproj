@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Nedry\Nedry.csproj"/>
+        <ProjectReference Include="..\SimpleUndoRedo\SimpleUndoRedo.csproj"/>
     </ItemGroup>
 
 </Project>

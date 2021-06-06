@@ -2,16 +2,17 @@
 using Comlink.Model;
 using Comlink.Render;
 using Nedry.Pin;
+using SimpleUndoRedo;
 
 namespace Comlink.Command
 {
 	public class SetPinTypeValueCommand : ICommand<Graph>
 	{
-		private readonly PinId _pin;
-		private readonly string _oldValue;
+		private readonly string _newType;
 		private readonly string _newValue;
 		private readonly string _oldType;
-		private readonly string _newType;
+		private readonly string _oldValue;
+		private readonly PinId _pin;
 
 		public SetPinTypeValueCommand(PinId pin, string oldValue, string newValue, string oldType, string newType)
 		{

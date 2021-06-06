@@ -2,17 +2,18 @@
 using Comlink.Render;
 using Nedry;
 using Nedry.Pin;
+using SimpleUndoRedo;
 
 namespace Comlink.Command
 {
 	public class SetOutputsAndConnectionsCommand : ICommand<Graph>
 	{
+		private readonly Connection[] _connections;
 		private readonly UniqueId _nodeId;
+		private readonly Connection[] _oldConnections;
 
 		private readonly IOutputPin[] _oldOutputPins;
-		private readonly Connection[] _oldConnections;
 		private readonly IOutputPin[] _outputPins;
-		private readonly Connection[] _connections;
 
 		public SetOutputsAndConnectionsCommand(Node node, IOutputPin[] outputPins, Connection[] connections)
 		{

@@ -1,36 +1,23 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-using Comlink.Command;
 using Comlink.Model;
 using Comlink.Render;
+using SimpleUndoRedo;
 
 namespace Comlink.Project
 {
 	public class ComlinkProject
 	{
-		[Flags]
-		private enum ProjectFileFlags : byte
-		{
-			HasGraph = 0b1,
-			HasHistory = 0b10
-		}
-
 		private const string FileMagic = "COMLINK";
+		public CommandStack<Graph> CommandStack { get; }
 
 		public Graph Graph { get; }
-		public CommandStack<Graph> CommandStack { get; }
 
 		public ComlinkProject(Graph graph, CommandStack<Graph> commandStack)
 		{
 			Graph = graph;
 			CommandStack = commandStack;
-		}
-
-		public static ComlinkProject NewEmptyProject()
-		{
-			var graph = new Graph();
-			return new ComlinkProject(graph, new CommandStack<Graph>(graph));
 		}
 
 		public static ComlinkProject Load(string filename)
@@ -43,7 +30,7 @@ namespace Comlink.Project
 
 			var version = br.ReadInt32();
 
-			var flags = (ProjectFileFlags) br.ReadByte();
+			var flags = (ProjectFileFlags)br.ReadByte();
 
 			var numNodes = br.ReadInt32();
 
@@ -51,6 +38,12 @@ namespace Comlink.Project
 			for (var i = 0; i < numNodes; i++)
 				graph.Add(ComlinkNode.Deserialize(br));
 
+			return new ComlinkProject(graph, new CommandStack<Graph>(graph));
+		}
+
+		public static ComlinkProject NewEmptyProject()
+		{
+			var graph = new Graph();
 			return new ComlinkProject(graph, new CommandStack<Graph>(graph));
 		}
 
@@ -63,12 +56,19 @@ namespace Comlink.Project
 
 			const ProjectFileFlags flags = ProjectFileFlags.HasGraph;
 
-			bw.Write((byte) flags);
+			bw.Write((byte)flags);
 
 			bw.Write(Graph.Count);
 
 			foreach (var node in Graph)
 				node.Serialize(bw);
+		}
+
+		[Flags]
+		private enum ProjectFileFlags : byte
+		{
+			HasGraph = 0b1,
+			HasHistory = 0b10
 		}
 	}
 }

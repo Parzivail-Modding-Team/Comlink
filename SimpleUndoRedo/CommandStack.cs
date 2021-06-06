@@ -2,16 +2,17 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Comlink.Command
+namespace SimpleUndoRedo
 {
 	public class CommandStack<T> : INotifyPropertyChanged
 	{
-		private readonly T _source;
+		public event PropertyChangedEventHandler PropertyChanged;
 		private readonly Stack<ICommand<T>> _commands;
 		private readonly Stack<ICommand<T>> _redoCommands;
+		private readonly T _source;
+		public bool CanRedo => _redoCommands.Count > 0;
 
 		public bool CanUndo => _commands.Count > 0;
-		public bool CanRedo => _redoCommands.Count > 0;
 
 		public CommandStack(T source)
 		{
@@ -20,17 +21,13 @@ namespace Comlink.Command
 			_redoCommands = new Stack<ICommand<T>>();
 		}
 
-		public event PropertyChangedEventHandler PropertyChanged;
-
-		public void Undo()
+		public void ApplyCommand(ICommand<T> command)
 		{
-			if (!CanUndo)
-				return;
+			command.Apply(_source);
+			_commands.Push(command);
 
-			var command = _commands.Pop();
-
-			command.Revert(_source);
-			_redoCommands.Push(command);
+			if (_redoCommands.Count > 0)
+				_redoCommands.Clear();
 
 			OnPropertyChanged(nameof(CanUndo));
 			OnPropertyChanged(nameof(CanRedo));
@@ -49,13 +46,15 @@ namespace Comlink.Command
 			OnPropertyChanged(nameof(CanRedo));
 		}
 
-		public void ApplyCommand(ICommand<T> command)
+		public void Undo()
 		{
-			command.Apply(_source);
-			_commands.Push(command);
+			if (!CanUndo)
+				return;
 
-			if (_redoCommands.Count > 0)
-				_redoCommands.Clear();
+			var command = _commands.Pop();
+
+			command.Revert(_source);
+			_redoCommands.Push(command);
 
 			OnPropertyChanged(nameof(CanUndo));
 			OnPropertyChanged(nameof(CanRedo));
