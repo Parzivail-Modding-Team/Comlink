@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Hyperwave.Extensions;
 using Hyperwave.Model;
 using OpenTK.Mathematics;
@@ -86,6 +87,49 @@ namespace Hyperwave
 					if (args.Control)
 						_commandStack.Redo();
 
+					break;
+				}
+				case Keys.Home:
+				{
+					if (args.Shift)
+					{
+						if (Selection.CursorSide == CursorSide.Start)
+							Selection = new Selection(0, Selection.EndIndex, CursorSide.Start);
+						else
+							Selection = new Selection(0, Selection.StartIndex, CursorSide.Start);
+					}
+					else
+					{
+						Selection = new Selection(0);
+					}
+
+					break;
+				}
+				case Keys.End:
+				{
+					if (args.Shift)
+					{
+						if (Selection.CursorSide == CursorSide.End)
+							Selection = new Selection(Selection.StartIndex, Text.Length);
+						else
+							Selection = new Selection(Selection.EndIndex, Text.Length);
+					}
+					else
+					{
+						Selection = new Selection(Text.Length);
+					}
+
+					break;
+				}
+				case Keys.Tab:
+				{
+					// TODO: better tab handling
+					InsertTextAtCursor("    ");
+					break;
+				}
+				case Keys.Enter:
+				{
+					InsertTextAtCursor("\n");
 					break;
 				}
 				case Keys.Backspace:
@@ -176,8 +220,13 @@ namespace Hyperwave
 
 		public override void ConsumeTextInput(TextInputEventArgs args)
 		{
+			InsertTextAtCursor(args.AsString);
+		}
+
+		public void InsertTextAtCursor(string s)
+		{
 			_commandStack.ApplyCommand(new InsertTextCommand(this, Selection.StartIndex, Selection.EndIndex,
-				args.AsString));
+				s));
 		}
 
 		private static bool ShouldControlThrough(char c)
@@ -259,12 +308,12 @@ namespace Hyperwave
 		/// <inheritdoc />
 		protected override void Draw(SKCanvas canvas)
 		{
-			using var textPaint = new SKPaint(new SKFont(SKTypeface.FromFamilyName("Segoe UI"), 36))
+			using var textPaint = new SKPaint(new SKFont(SKTypeface.FromFamilyName("Georgia"), 18))
 			{
 				Color = 0xFF_000000,
 				IsStroke = false,
 				IsAntialias = true,
-				HintingLevel = SKPaintHinting.Full,
+				SubpixelText = true,
 				LcdRenderText = true
 			};
 
@@ -280,18 +329,64 @@ namespace Hyperwave
 				IsStroke = false
 			};
 
-			var selectionStartX = textPaint.MeasureText(_control.Text[.._control.Selection.StartIndex]);
-			var selectionEndX = textPaint.MeasureText(_control.Text[.._control.Selection.EndIndex]);
-			canvas.DrawText(_control.Text, 50, 50, textPaint);
-
 			var lineHeight = (int)(textPaint.FontMetrics.Descent - textPaint.FontMetrics.Ascent +
 			                       textPaint.FontMetrics.Leading);
-			var cursorPos = _control.Selection.CursorSide == CursorSide.Start ? selectionStartX : selectionEndX;
-			canvas.DrawRect(50 + cursorPos, 50 + textPaint.FontMetrics.Ascent, 2, lineHeight, cursorPaint);
 
-			if (selectionStartX != selectionEndX)
-				canvas.DrawRect(50 + selectionStartX, 50 + textPaint.FontMetrics.Ascent,
-					selectionEndX - selectionStartX, lineHeight, highlightPaint);
+			var lines = _control.Text.Split("\n");
+
+			var selectionStartLine = _control.Text[.._control.Selection.StartIndex].Count(c => c == '\n');
+			var selectionEndLine = _control.Text[.._control.Selection.EndIndex].Count(c => c == '\n');
+
+			var startIndexLineStart = _control.Text[.._control.Selection.StartIndex].LastIndexOf('\n') + 1;
+			var endIndexLineStart = _control.Text[.._control.Selection.EndIndex].LastIndexOf('\n') + 1;
+
+			var selectionStartOffset = _control.Selection.StartIndex - startIndexLineStart;
+			var selectionEndOffset = _control.Selection.EndIndex - endIndexLineStart;
+
+			var selectionStartX = textPaint.MeasureText(lines[selectionStartLine][..selectionStartOffset]);
+			var selectionEndX = textPaint.MeasureText(lines[selectionEndLine][..selectionEndOffset]);
+
+			for (var i = 0; i < lines.Length; i++)
+			{
+				var line = lines[i];
+				canvas.DrawText(line, 50, 50 + lineHeight * i, textPaint);
+
+				if (_control.Selection.Length > 0)
+				{
+					if (i == selectionStartLine && selectionStartLine == selectionEndLine)
+					{
+						var lineWidthUnselected = textPaint.MeasureText(line[..selectionStartOffset]);
+						var lineWidthSelected = textPaint.MeasureText(line[selectionStartOffset..selectionEndOffset]);
+						canvas.DrawRect(50 + lineWidthUnselected, 50 + textPaint.FontMetrics.Ascent + i * lineHeight,
+							lineWidthSelected, lineHeight, highlightPaint);
+					}
+					else if (i == selectionStartLine)
+					{
+						var lineWidthUnselected = textPaint.MeasureText(line[..selectionStartOffset]);
+						var lineWidthSelected = textPaint.MeasureText(line[selectionStartOffset..]);
+						canvas.DrawRect(50 + lineWidthUnselected, 50 + textPaint.FontMetrics.Ascent + i * lineHeight,
+							lineWidthSelected, lineHeight, highlightPaint);
+					}
+					else if (i == selectionEndLine)
+					{
+						var lineWidthSelected = textPaint.MeasureText(line[..selectionEndOffset]);
+						canvas.DrawRect(50, 50 + textPaint.FontMetrics.Ascent + i * lineHeight,
+							lineWidthSelected, lineHeight, highlightPaint);
+					}
+					else if (i > selectionStartLine && i < selectionEndLine)
+					{
+						var lineWidth = textPaint.MeasureText(line);
+						canvas.DrawRect(50, 50 + textPaint.FontMetrics.Ascent + i * lineHeight,
+							lineWidth, lineHeight, highlightPaint);
+					}
+				}
+			}
+
+			var cursorX = _control.Selection.CursorSide == CursorSide.Start ? selectionStartX : selectionEndX;
+			var cursorLine = _control.Selection.CursorSide == CursorSide.Start ? selectionStartLine : selectionEndLine;
+
+			canvas.DrawRect(50 + cursorX, 50 + textPaint.FontMetrics.Ascent + cursorLine * lineHeight, 1, lineHeight,
+				cursorPaint);
 		}
 	}
 }
