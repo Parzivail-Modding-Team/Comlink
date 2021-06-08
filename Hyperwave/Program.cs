@@ -37,6 +37,9 @@ namespace Hyperwave
 
 	internal class Control
 	{
+		public int RequestedX { get; set; }
+		public int RequestedY { get; set; }
+
 		public virtual void ConsumeKeyDown(KeyboardKeyEventArgs args)
 		{
 		}
@@ -56,10 +59,25 @@ namespace Hyperwave
 			get => _selection;
 			set
 			{
-				var start = MathHelper.Clamp(Math.Min(value.StartIndex, value.EndIndex), 0, Text.Length);
-				var end = MathHelper.Clamp(Math.Max(value.StartIndex, value.EndIndex), 0, Text.Length);
+				var start = MathHelper.Clamp(value.StartIndex, 0, Text.Length);
+				var end = MathHelper.Clamp(value.EndIndex, 0, Text.Length);
 
-				_selection = new Selection(start, end, value.CursorSide);
+				var cursorSide = value.CursorSide;
+				if (start > end)
+				{
+					var temp = start;
+					start = end;
+					end = temp;
+
+					cursorSide = cursorSide switch
+					{
+						CursorSide.End => CursorSide.Start,
+						CursorSide.Start => CursorSide.End,
+						_ => throw new ArgumentOutOfRangeException()
+					};
+				}
+
+				_selection = new Selection(start, end, cursorSide);
 			}
 		}
 
@@ -165,52 +183,51 @@ namespace Hyperwave
 				}
 				case Keys.Left:
 				{
+					var proposedSelection = Selection.MoveCursor(CursorDirection.Left, 1);
+					if (args.Control)
+						proposedSelection = GetCursorPositionAfterWordJump(CursorDirection.Left);
+
 					if (args.Shift)
 					{
 						if (Selection.Length > 0)
-							Selection = Selection.CursorSide switch
-							{
-								CursorSide.Start => new Selection(Selection.StartIndex - 1, Selection.EndIndex,
-									CursorSide.Start),
-								CursorSide.End => new Selection(Selection.StartIndex, Selection.EndIndex - 1),
-								_ => Selection
-							};
+							Selection = proposedSelection;
 						else
-							Selection = new Selection(Selection.StartIndex - 1, Selection.EndIndex, CursorSide.Start);
+							// Expand cursor into selection
+							Selection = new Selection(proposedSelection.StartIndex, Selection.EndIndex,
+								CursorSide.Start);
 					}
 					else if (Selection.Length > 0)
 					{
-						Selection = new Selection(Selection.StartIndex);
+						Selection = args.Control ? proposedSelection : new Selection(Selection.StartIndex);
 					}
 					else
 					{
-						Selection = new Selection(Selection.StartIndex - 1);
+						Selection = proposedSelection;
 					}
 
 					break;
 				}
 				case Keys.Right:
 				{
+					var proposedSelection = Selection.MoveCursor(CursorDirection.Right, 1);
+					if (args.Control)
+						proposedSelection = GetCursorPositionAfterWordJump(CursorDirection.Right);
+
 					if (args.Shift)
 					{
 						if (Selection.Length > 0)
-							Selection = Selection.CursorSide switch
-							{
-								CursorSide.Start => new Selection(Selection.StartIndex + 1, Selection.EndIndex,
-									CursorSide.Start),
-								CursorSide.End => new Selection(Selection.StartIndex, Selection.EndIndex + 1),
-								_ => Selection
-							};
+							Selection = proposedSelection;
 						else
-							Selection = new Selection(Selection.StartIndex, Selection.EndIndex + 1);
+							// Expand cursor into selection
+							Selection = new Selection(Selection.StartIndex, proposedSelection.EndIndex);
 					}
 					else if (Selection.Length > 0)
 					{
-						Selection = new Selection(Selection.EndIndex);
+						Selection = args.Control ? proposedSelection : new Selection(Selection.EndIndex);
 					}
 					else
 					{
-						Selection = new Selection(Selection.EndIndex + 1);
+						Selection = proposedSelection;
 					}
 
 					break;
@@ -227,6 +244,54 @@ namespace Hyperwave
 		{
 			_commandStack.ApplyCommand(new InsertTextCommand(this, Selection.StartIndex, Selection.EndIndex,
 				s));
+		}
+
+		private Selection GetCursorPositionAfterWordJump(CursorDirection direction)
+		{
+			var cursorIndex = Selection.CursorSide == CursorSide.End ? Selection.EndIndex : Selection.StartIndex;
+			var noSelection = Selection.Length == 0;
+
+			switch (direction)
+			{
+				case CursorDirection.Left:
+				{
+					if (cursorIndex == 0)
+						return Selection;
+
+					var reverseIndex = cursorIndex - 1;
+
+					if (ShouldControlThrough(Text[cursorIndex - 1]))
+						reverseIndex = Text[..cursorIndex].LastIndexOf(c => !ShouldControlThrough(c));
+					else
+						reverseIndex = Text[..cursorIndex].LastIndexOf(ShouldControlThrough);
+
+					reverseIndex++;
+
+					if (noSelection)
+						return new Selection(reverseIndex);
+
+					return Selection.MoveCursor(CursorDirection.Left, cursorIndex - reverseIndex);
+				}
+				case CursorDirection.Right:
+				{
+					if (cursorIndex >= Text.Length)
+						return Selection;
+
+					var forwardDistance = 1;
+
+					if (ShouldControlThrough(Text[cursorIndex]))
+						forwardDistance = Text[cursorIndex..].IndexOf(c => !ShouldControlThrough(c));
+					else
+						forwardDistance = Text[cursorIndex..].IndexOf(ShouldControlThrough);
+
+					if (forwardDistance == -1)
+						forwardDistance = Text[cursorIndex..].Length;
+
+					return Selection.MoveCursor(direction, forwardDistance);
+				}
+				default:
+					throw new ArgumentOutOfRangeException(nameof(direction), direction, null);
+			}
 		}
 
 		private static bool ShouldControlThrough(char c)
@@ -301,7 +366,11 @@ namespace Hyperwave
 			KeyDown += FocusManager.KeyDown;
 			TextInput += FocusManager.TextInput;
 
-			_control = new TextBoxControl();
+			_control = new TextBoxControl
+			{
+				RequestedX = 100,
+				RequestedY = 100
+			};
 			FocusManager.FocusedControl = _control;
 		}
 
@@ -346,46 +415,48 @@ namespace Hyperwave
 			var selectionStartX = textPaint.MeasureText(lines[selectionStartLine][..selectionStartOffset]);
 			var selectionEndX = textPaint.MeasureText(lines[selectionEndLine][..selectionEndOffset]);
 
+			var controlX = _control.RequestedX;
+			var controlY = _control.RequestedY;
+
 			for (var i = 0; i < lines.Length; i++)
 			{
 				var line = lines[i];
-				canvas.DrawText(line, 50, 50 + lineHeight * i, textPaint);
+				canvas.DrawText(line, controlX, controlY + lineHeight * i, textPaint);
 
 				if (_control.Selection.Length > 0)
 				{
+					float boxStartX = 0;
+					float boxWidth = 0;
+
 					if (i == selectionStartLine && selectionStartLine == selectionEndLine)
 					{
-						var lineWidthUnselected = textPaint.MeasureText(line[..selectionStartOffset]);
-						var lineWidthSelected = textPaint.MeasureText(line[selectionStartOffset..selectionEndOffset]);
-						canvas.DrawRect(50 + lineWidthUnselected, 50 + textPaint.FontMetrics.Ascent + i * lineHeight,
-							lineWidthSelected, lineHeight, highlightPaint);
+						boxStartX = textPaint.MeasureText(line[..selectionStartOffset]);
+						boxWidth = textPaint.MeasureText(line[selectionStartOffset..selectionEndOffset]);
 					}
 					else if (i == selectionStartLine)
 					{
-						var lineWidthUnselected = textPaint.MeasureText(line[..selectionStartOffset]);
-						var lineWidthSelected = textPaint.MeasureText(line[selectionStartOffset..]);
-						canvas.DrawRect(50 + lineWidthUnselected, 50 + textPaint.FontMetrics.Ascent + i * lineHeight,
-							lineWidthSelected, lineHeight, highlightPaint);
+						boxStartX = textPaint.MeasureText(line[..selectionStartOffset]);
+						boxWidth = textPaint.MeasureText(line[selectionStartOffset..]);
 					}
 					else if (i == selectionEndLine)
 					{
-						var lineWidthSelected = textPaint.MeasureText(line[..selectionEndOffset]);
-						canvas.DrawRect(50, 50 + textPaint.FontMetrics.Ascent + i * lineHeight,
-							lineWidthSelected, lineHeight, highlightPaint);
+						boxWidth = textPaint.MeasureText(line[..selectionEndOffset]);
 					}
 					else if (i > selectionStartLine && i < selectionEndLine)
 					{
-						var lineWidth = textPaint.MeasureText(line);
-						canvas.DrawRect(50, 50 + textPaint.FontMetrics.Ascent + i * lineHeight,
-							lineWidth, lineHeight, highlightPaint);
+						boxWidth = textPaint.MeasureText(line);
 					}
+
+					canvas.DrawRect(controlX + boxStartX, controlY + textPaint.FontMetrics.Ascent + i * lineHeight,
+						boxWidth, lineHeight, highlightPaint);
 				}
 			}
 
 			var cursorX = _control.Selection.CursorSide == CursorSide.Start ? selectionStartX : selectionEndX;
 			var cursorLine = _control.Selection.CursorSide == CursorSide.Start ? selectionStartLine : selectionEndLine;
 
-			canvas.DrawRect(50 + cursorX, 50 + textPaint.FontMetrics.Ascent + cursorLine * lineHeight, 1, lineHeight,
+			canvas.DrawRect(controlX + cursorX, controlY + textPaint.FontMetrics.Ascent + cursorLine * lineHeight, 1,
+				lineHeight,
 				cursorPaint);
 		}
 	}
