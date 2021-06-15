@@ -12,21 +12,21 @@ namespace Hyperwave
 	public abstract class SkiaWindow : GameWindow
 	{
 		private const SKColorType ColorType = SKColorType.Rgba8888;
-		private const GRSurfaceOrigin SurfaceOrigin = GRSurfaceOrigin.BottomLeft;
 
 		private static readonly DebugProc DebugCallback = OnGlMessage;
+		private const GRSurfaceOrigin SurfaceOrigin = GRSurfaceOrigin.BottomLeft;
 
 		private readonly Stopwatch _frameTimer = new();
 		private readonly Stopwatch _renderTimer = new();
-
-		private SKSurface _surface;
 		private SKCanvas _canvas;
 		private GRGlFramebufferInfo _glInfo;
 		private GRContext _grContext;
+		private SKSizeI _lastSize;
 		private GRBackendRenderTarget _renderTarget;
 
 		private SKSizeI _size;
-		private SKSizeI _lastSize;
+
+		private SKSurface _surface;
 		public double FrameTime { get; private set; }
 		public double MinRenderTime { get; private set; }
 
@@ -39,6 +39,24 @@ namespace Hyperwave
 			UpdateFrame += WindowUpdate;
 
 			Closing += WindowClosing;
+		}
+
+		protected abstract void Draw(SKCanvas canvas);
+
+		private static void OnGlMessage(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
+			IntPtr message, IntPtr userparam)
+		{
+			if (severity == DebugSeverity.DebugSeverityNotification)
+				return;
+
+			var msg = Marshal.PtrToStringAnsi(message, length);
+			Console.WriteLine(msg);
+		}
+
+		private void WindowClosing(CancelEventArgs obj)
+		{
+			// Without this the app thread would never abort.
+			Environment.Exit(0);
 		}
 
 		private void WindowLoad()
@@ -56,41 +74,14 @@ namespace Hyperwave
 			GL.ClearColor(1, 1, 1, 1);
 		}
 
-		private void WindowClosing(CancelEventArgs obj)
-		{
-			// Without this the app thread would never abort.
-			Environment.Exit(0);
-		}
-
-		private static void OnGlMessage(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
-			IntPtr message, IntPtr userparam)
-		{
-			if (severity == DebugSeverity.DebugSeverityNotification)
-				return;
-
-			var msg = Marshal.PtrToStringAnsi(message, length);
-			Console.WriteLine(msg);
-		}
-
-		private void WindowResize(ResizeEventArgs obj)
-		{
-			GL.Viewport(0, 0, Size.X, Size.Y);
-		}
-
-		private void WindowUpdate(FrameEventArgs e)
-		{
-			// Title = $"{FrameTime:F1} ms/f, {RenderTime:F2}ms/render";
-		}
-
-		protected abstract void Draw(SKCanvas canvas);
-
 		private void WindowRender(FrameEventArgs e)
 		{
 			FrameTime = _frameTimer.Elapsed.TotalMilliseconds;
 			_frameTimer.Restart();
 			_renderTimer.Restart();
 
-			const ClearBufferMask bits = ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit;
+			const ClearBufferMask bits = ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit |
+			                             ClearBufferMask.StencilBufferBit;
 			// Reset the view
 			GL.Clear(bits);
 
@@ -162,6 +153,16 @@ namespace Hyperwave
 
 			// Swap the graphics buffer
 			SwapBuffers();
+		}
+
+		private void WindowResize(ResizeEventArgs obj)
+		{
+			GL.Viewport(0, 0, Size.X, Size.Y);
+		}
+
+		private void WindowUpdate(FrameEventArgs e)
+		{
+			// Title = $"{FrameTime:F1} ms/f, {RenderTime:F2}ms/render";
 		}
 	}
 }
