@@ -3,6 +3,7 @@ using System.Linq;
 using Hyperwave.Controls;
 using Hyperwave.Helper;
 using Hyperwave.Model;
+using Hyperwave.Resources;
 using OpenTK.Mathematics;
 using SkiaSharp;
 
@@ -17,7 +18,7 @@ namespace Hyperwave.Render
 
 		public DefaultTextBoxRenderer()
 		{
-			_textPaint = new SKPaint(new SKFont(SKTypeface.FromFamilyName("Georgia"), 36))
+			_textPaint = new SKPaint(new SKFont(SKTypeface.FromStream(ResourceHelper.GetResource("Inter-Regular.otf")), 36))
 			{
 				Color = 0xFF_000000,
 				IsStroke = false,
@@ -46,7 +47,7 @@ namespace Hyperwave.Render
 			{
 				Color = 0xFF_000000,
 				IsStroke = true,
-				StrokeWidth = 2
+				StrokeWidth = 1
 			};
 
 			var lineHeight = (int)LineHeight;
@@ -55,9 +56,6 @@ namespace Hyperwave.Render
 
 			var (selectionStartLine, selectionStartOffset) = control.GetCursorLine(control.Selection.StartIndex);
 			var (selectionEndLine, selectionEndOffset) = control.GetCursorLine(control.Selection.EndIndex);
-
-			var selectionStartX = _textPaint.MeasureText(lines[selectionStartLine][..selectionStartOffset]);
-			var selectionEndX = _textPaint.MeasureText(lines[selectionEndLine][..selectionEndOffset]);
 
 			canvas.Save();
 			canvas.SetMatrix(control.Transformation);
@@ -111,23 +109,24 @@ namespace Hyperwave.Render
 
 			if (CursorManager.CursorBlinkPhase)
 			{
-				var cursorX = control.Selection.CursorSide == CursorSide.Start ? selectionStartX : selectionEndX;
-				var cursorLine = control.Selection.CursorSide == CursorSide.Start
-					? selectionStartLine
-					: selectionEndLine;
-
-				canvas.DrawRect(MathF.Round(cursorX), _textPaint.FontMetrics.Ascent + cursorLine * lineHeight, 1,
-					MathF.Round(lineHeight),
-					cursorPaint);
+				var (x, y) = GetCursorPosition(control);
+				canvas.DrawRect(x, y - lineHeight, 1, lineHeight, cursorPaint);
 			}
 
 			canvas.Restore();
 		}
 
-		public (int lineIndex, int lineOffset, int cursorIndex) GetCursorAtPosition(TextBoxControl control, Vector2 pos)
+		public (int lineIndex, int lineOffset, int cursorIndex) GetCursorAtPosition(TextBoxControl control, Vector2 pos,
+			LineOffset offset = LineOffset.None)
 		{
 			var lineIndex = (int)(pos.Y / LineHeight);
-			if (lineIndex >= control.Lines.Length)
+
+			if (offset == LineOffset.NextLine)
+				lineIndex++;
+			else if (offset == LineOffset.PreviousLine)
+				lineIndex--;
+
+			if (lineIndex >= control.Lines.Length || lineIndex < 0)
 				return (-1, -1, -1);
 
 			var line = control.Lines[lineIndex];
@@ -135,6 +134,24 @@ namespace Hyperwave.Render
 			var lineOffset = TextUtil.BinarySearchCursor(i => _textPaint.MeasureText(line[..i]), line.Length, pos.X);
 
 			return (lineIndex, lineOffset, control.Lines[..lineIndex].Sum(s => s.Length + 1) + lineOffset);
+		}
+
+		public Vector2 GetCursorPosition(TextBoxControl control)
+		{
+			var lines = control.Lines;
+
+			var (selectionStartLine, selectionStartOffset) = control.GetCursorLine(control.Selection.StartIndex);
+			var (selectionEndLine, selectionEndOffset) = control.GetCursorLine(control.Selection.EndIndex);
+
+			var selectionStartX = _textPaint.MeasureText(lines[selectionStartLine][..selectionStartOffset]);
+			var selectionEndX = _textPaint.MeasureText(lines[selectionEndLine][..selectionEndOffset]);
+
+			var cursorX = control.Selection.CursorSide == CursorSide.Start ? selectionStartX : selectionEndX;
+			var cursorLine = control.Selection.CursorSide == CursorSide.Start
+				? selectionStartLine
+				: selectionEndLine;
+
+			return new Vector2(MathF.Round(cursorX), _textPaint.FontMetrics.Ascent + (cursorLine + 1) * (int)LineHeight);
 		}
 	}
 }

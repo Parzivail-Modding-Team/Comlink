@@ -15,6 +15,8 @@ namespace Hyperwave
 			new NativeWindowSettings { Size = new Vector2i(960, 540) })
 		{
 			MouseDown += args => { FocusManager.MouseDown(args, MousePosition); };
+			MouseUp += args => { FocusManager.MouseUp(args, MousePosition); };
+			MouseMove += FocusManager.MouseMove;
 			KeyDown += FocusManager.KeyDown;
 			TextInput += FocusManager.TextInput;
 

@@ -17,6 +17,16 @@ namespace Hyperwave.Controls
 			FocusedControl?.ConsumeMouseDown(args, mousePosition);
 		}
 
+		public static void MouseMove(MouseMoveEventArgs args)
+		{
+			FocusedControl?.ConsumeMouseMove(args);
+		}
+
+		public static void MouseUp(MouseButtonEventArgs args, Vector2 mousePosition)
+		{
+			FocusedControl?.ConsumeMouseUp(args, mousePosition);
+		}
+
 		public static void TextInput(TextInputEventArgs args)
 		{
 			FocusedControl?.ConsumeTextInput(args);

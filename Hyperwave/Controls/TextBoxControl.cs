@@ -71,6 +71,7 @@ namespace Hyperwave.Controls
 		public string[] Lines;
 
 		private readonly CommandStack<TextBoxControl> _commandStack;
+		private bool _leftPressed;
 		private Selection _selection;
 		private string _text;
 
@@ -217,30 +218,31 @@ namespace Hyperwave.Controls
 
 					break;
 				}
+				case Keys.Up:
+				{
+					var cursorPos = Renderer.GetCursorPosition(this);
+					var (_, _, cursor) = Renderer.GetCursorAtPosition(this, cursorPos, LineOffset.PreviousLine);
+					var proposedSelection = Selection.MoveCursor(CursorDirection.Left, Selection.Cursor - cursor);
+
+					ApplyProposedSelection(args, proposedSelection, CursorSide.Start);
+					break;
+				}
+				case Keys.Down:
+				{
+					var cursorPos = Renderer.GetCursorPosition(this);
+					var (_, _, cursor) = Renderer.GetCursorAtPosition(this, cursorPos, LineOffset.NextLine);
+					var proposedSelection = Selection.MoveCursor(CursorDirection.Left, Selection.Cursor - cursor);
+
+					ApplyProposedSelection(args, proposedSelection, CursorSide.End);
+					break;
+				}
 				case Keys.Left:
 				{
 					var proposedSelection = Selection.MoveCursor(CursorDirection.Left, 1);
 					if (args.Control)
 						proposedSelection = GetCursorPositionAfterWordJump(CursorDirection.Left);
 
-					if (args.Shift)
-					{
-						if (Selection.Length > 0)
-							Selection = proposedSelection;
-						else
-							// Expand cursor into selection
-							Selection = new Selection(proposedSelection.StartIndex, Selection.EndIndex,
-								CursorSide.Start);
-					}
-					else if (Selection.Length > 0)
-					{
-						Selection = args.Control ? proposedSelection : new Selection(Selection.StartIndex);
-					}
-					else
-					{
-						Selection = proposedSelection;
-					}
-
+					ApplyProposedSelection(args, proposedSelection, CursorSide.Start);
 					break;
 				}
 				case Keys.Right:
@@ -249,23 +251,7 @@ namespace Hyperwave.Controls
 					if (args.Control)
 						proposedSelection = GetCursorPositionAfterWordJump(CursorDirection.Right);
 
-					if (args.Shift)
-					{
-						if (Selection.Length > 0)
-							Selection = proposedSelection;
-						else
-							// Expand cursor into selection
-							Selection = new Selection(Selection.StartIndex, proposedSelection.EndIndex);
-					}
-					else if (Selection.Length > 0)
-					{
-						Selection = args.Control ? proposedSelection : new Selection(Selection.EndIndex);
-					}
-					else
-					{
-						Selection = proposedSelection;
-					}
-
+					ApplyProposedSelection(args, proposedSelection, CursorSide.End);
 					break;
 				}
 			}
@@ -273,9 +259,30 @@ namespace Hyperwave.Controls
 
 		public override void ConsumeMouseDown(MouseButtonEventArgs args, Vector2 mousePosition)
 		{
-			var localPosition = Transformation.Invert().MapPoint(mousePosition);
-			var (_, _, cursorIndex) = Renderer.GetCursorAtPosition(this, localPosition);
-			Selection = new Selection(cursorIndex);
+			if (args.Button == MouseButton.Left)
+			{
+				var localPosition = Transformation.Invert().MapPoint(mousePosition);
+				var (_, _, cursorIndex) = Renderer.GetCursorAtPosition(this, localPosition);
+				Selection = new Selection(cursorIndex);
+
+				_leftPressed = true;
+			}
+		}
+
+		public override void ConsumeMouseMove(MouseMoveEventArgs args)
+		{
+			if (_leftPressed)
+			{
+				var localPosition = Transformation.Invert().MapPoint(args.Position);
+				var (_, _, cursorIndex) = Renderer.GetCursorAtPosition(this, localPosition);
+				Selection = Selection.SetEnd(cursorIndex);
+			}
+		}
+
+		public override void ConsumeMouseUp(MouseButtonEventArgs args, Vector2 mousePosition)
+		{
+			if (args.Button == MouseButton.Left)
+				_leftPressed = false;
 		}
 
 		public override void ConsumeTextInput(TextInputEventArgs args)
@@ -310,9 +317,32 @@ namespace Hyperwave.Controls
 			CursorManager.ResetBlinking();
 		}
 
+		private void ApplyProposedSelection(KeyboardKeyEventArgs args, Selection proposedSelection, CursorSide bias)
+		{
+			if (args.Shift)
+			{
+				if (Selection.Length > 0)
+					Selection = proposedSelection;
+				else if (bias == CursorSide.Start) // Expand cursor into selection
+					Selection = new Selection(proposedSelection.StartIndex, Selection.EndIndex,
+						bias);
+				else
+					Selection = new Selection(Selection.StartIndex, proposedSelection.EndIndex,
+						bias);
+			}
+			else if (Selection.Length > 0)
+			{
+				Selection = args.Control ? proposedSelection : new Selection(Selection.GetSide(bias));
+			}
+			else
+			{
+				Selection = proposedSelection;
+			}
+		}
+
 		private Selection GetCursorPositionAfterWordJump(CursorDirection direction)
 		{
-			var cursorIndex = Selection.CursorSide == CursorSide.End ? Selection.EndIndex : Selection.StartIndex;
+			var cursorIndex = Selection.Cursor;
 			var noSelection = Selection.Length == 0;
 
 			switch (direction)

@@ -14,4 +14,9 @@
         <ProjectReference Include="..\SimpleUndoRedo\SimpleUndoRedo.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <None Remove="Resources\Inter-Regular.otf"/>
+        <EmbeddedResource Include="Resources\Inter-Regular.otf"/>
+    </ItemGroup>
+
 </Project>

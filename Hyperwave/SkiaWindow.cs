@@ -162,7 +162,7 @@ namespace Hyperwave
 
 		private void WindowUpdate(FrameEventArgs e)
 		{
-			// Title = $"{FrameTime:F1} ms/f, {RenderTime:F2}ms/render";
+			Title = $"{FrameTime:F1} ms/f, {RenderTime:F2}ms/render";
 		}
 	}
 }

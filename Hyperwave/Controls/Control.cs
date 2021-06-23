@@ -17,6 +17,14 @@ namespace Hyperwave.Controls
 		{
 		}
 
+		public virtual void ConsumeMouseMove(MouseMoveEventArgs args)
+		{
+		}
+
+		public virtual void ConsumeMouseUp(MouseButtonEventArgs args, Vector2 mousePosition)
+		{
+		}
+
 		public virtual void ConsumeTextInput(TextInputEventArgs args)
 		{
 		}
